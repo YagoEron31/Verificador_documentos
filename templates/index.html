@@ -1,84 +1,70 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analisador de Documentos</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Verificador de Documentos - IFRN Apodi</title>
     <style>
-        .status-seguro { background-color: #dcfce7; color: #166534; }
-        .status-suspeito { background-color: #fee2e2; color: #991b1b; }
-        .status-erro { background-color: #feefc2; color: #9a3412; }
+        body { font-family: Arial, sans-serif; background-color: #eef1f5; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { color: #0056b3; }
+        button { background-color: #0056b3; color: white; padding: 12px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 15px; }
+        button:hover { background-color: #004494; }
+        .resultado-box { margin-top: 30px; padding: 20px; border-radius: 5px; border-width: 2px; border-style: solid; }
+        .status-seguro { border-color: #28a745; background-color: #e9f7ec; }
+        .status-suspeito { border-color: #dc3545; background-color: #fce8e6; }
+        .status-erro { border-color: #ffc107; background-color: #fff8e1; }
+        .status-title { font-size: 24px; font-weight: bold; }
+        .status-seguro .status-title { color: #28a745; }
+        .status-suspeito .status-title { color: #dc3545; }
+        .status-erro .status-title { color: #ffc107; }
+        pre { background-color: #f8f9fa; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; }
+        ul { padding-left: 20px; }
+        .notification { font-weight: bold; color: #d9534f; margin-top: 15px; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
-    <div class="container mx-auto px-4 py-8">
-        
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">Analisador de Documentos Públicos</h1>
-            <p class="text-gray-600">Envie um documento (PDF ou Imagem) para extrair o texto e identificar possíveis irregularidades.</p>
-        </header>
-
-        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
-            <form action="/" method="post" enctype="multipart/form-data">
-                <label for="file" class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
-                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                        <i class="fas fa-cloud-upload-alt text-gray-400 text-4xl mb-3"></i>
-                        <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Clique para enviar</span> ou arraste o arquivo</p>
-                        <p class="text-xs text-gray-500">PDF, JPG, PNG</p>
-                    </div>
-                    <input id="file" name="file" type="file" class="hidden" onchange="this.form.submit()" />
-                </label>
-            </form>
-
-            {% if erro_upload %}
-            <div class="mt-6 p-4 rounded-lg status-erro">
-                <h3 class="font-bold text-lg"><i class="fas fa-exclamation-triangle mr-2"></i>Erro no Upload</h3>
-                <p>{{ erro_upload }}</p>
-            </div>
-            {% endif %}
-
-            {% if resultado %}
-            <div class="mt-8 border-t pt-6">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Resultado da Análise</h2>
-                
-                <div class="p-4 rounded-lg 
-                    {% if resultado.status == 'SEGURO' %} status-seguro
-                    {% elif resultado.status == 'SUSPEITO' %} status-suspeito
-                    {% else %} status-erro {% endif %}">
-                    
-                    <h3 class="font-bold text-lg">
-                        {% if resultado.status == 'SEGURO' %} <i class="fas fa-check-circle mr-2"></i>Status: Documento Seguro 
-                        {% elif resultado.status == 'SUSPEITO' %} <i class="fas fa-exclamation-triangle mr-2"></i>Status: Documento Suspeito
-                        {% else %} <i class="fas fa-times-circle mr-2"></i>Status: Erro na Análise
-                        {% endif %}
-                    </h3>
-                    
-                    {% if resultado.erros %}
-                    <ul class="list-disc list-inside mt-2 text-sm">
+<body>
+    <div class="container">
+        <h1>Verificador Inteligente de Documentos Públicos</h1>
+        <p>Faça o upload de um documento para análise de integridade e detecção de possíveis fraudes.</p>
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <button type="submit">Analisar Documento</button>
+        </form>
+        {% if erro_upload %}
+            <p style="color: red;">{{ erro_upload }}</p>
+        {% endif %}
+        {% if resultado %}
+            <div class="resultado-box 
+                {% if resultado.status == 'SEGURO' %}status-seguro
+                {% elif resultado.status == 'SUSPEITO' %}status-suspeito
+                {% else %}status-erro{% endif %}">
+                <p class="status-title">
+                    {% if resultado.status == 'SEGURO' %}✅ Documento Íntegro
+                    {% elif resultado.status == 'SUSPEITO' %}⚠️ Alerta: Documento Suspeito
+                    {% else %}❌ Erro na Análise{% endif %}
+                </p>
+                {% if resultado.status == 'SUSPEITO' %}
+                    <p>Foram detectadas as seguintes inconsistências:</p>
+                    <ul>
                         {% for erro in resultado.erros %}
-                        <li>{{ erro }}</li>
+                            <li>{{ erro }}</li>
                         {% endfor %}
                     </ul>
-                    {% endif %}
-                </div>
-
-                <div class="mt-6">
-                    <p class="text-xs font-mono text-gray-500 break-all">Hash do conteúdo (SHA-256): {{ resultado.hash }}</p>
-                </div>
-
+                    <p class="notification">AÇÃO: Um alerta foi gerado e uma notificação foi enviada ao órgão de verificação responsável.</p>
+                {% elif resultado.status == 'ERRO' %}
+                     <ul><li>{{ resultado.erros[0] }}</li></ul>
+                {% endif %}
+                {% if resultado.hash %}
+                    <hr>
+                    <p><strong>Impressão Digital (Hash SHA-256):</strong></p>
+                    <pre>{{ resultado.hash }}</pre>
+                {% endif %}
                 {% if resultado.texto %}
-                <div class="mt-6">
-                    <h3 class="font-semibold text-gray-700 mb-2">Texto Extraído:</h3>
-                    <div class="w-full h-48 p-2 border rounded bg-gray-50 text-xs text-gray-600 overflow-auto">
-                        <pre>{{ resultado.texto }}</pre>
-                    </div>
-                </div>
+                    <p><strong>Texto Extraído via OCR:</strong></p>
+                    <pre>{{ resultado.texto }}</pre>
                 {% endif %}
             </div>
-            {% endif %}
-        </div>
+        {% endif %}
     </div>
 </body>
 </html>
