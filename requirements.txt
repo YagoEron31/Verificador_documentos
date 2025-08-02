@@ -1,0 +1,7 @@
+Flask
+gunicorn
+Pillow
+pytesseract
+PyMuPDF
+supabase
+python-dotenv
