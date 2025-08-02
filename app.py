@@ -1,69 +1,53 @@
 import os
 import re
 import hashlib
-import io
-
-from flask import Flask, request, render_template, jsonify
-from PIL import Image
-import pytesseract
-import fitz  # PyMuPDF
+from flask import Flask, request, render_template
+import requests
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente do arquivo .env (para testes locais)
+# Carrega variáveis do .env (se houver)
 load_dotenv()
 
-# --- Configuração do Tesseract e Supabase ---
-IS_ON_RENDER = os.environ.get('RENDER') == 'true'
-
-if not IS_ON_RENDER:
-    try:
-        pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-    except Exception as e:
-        print(f"Aviso: Não foi possível configurar o caminho do Tesseract localmente: {e}")
+# Usando a chave API direto (troque para getenv se quiser)
+OCR_SPACE_API_KEY = "K81365576488957"
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-# ---------------------------------------------
 
 app = Flask(__name__)
 
-def extrair_texto_do_arquivo(file_bytes, filename):
-    """Extrai texto de um arquivo (PDF ou imagem) a partir de bytes, com uso reduzido de RAM."""
-    texto_extraido = ""
+def extrair_texto_ocr_space(file_bytes, filename):
+    url = "https://api.ocr.space/parse/image"
+    payload = {
+        'language': 'por',
+        'isOverlayRequired': False,
+        'OCREngine': 2
+    }
+    files = {
+        'file': (filename, file_bytes)
+    }
+    headers = {
+        'apikey': OCR_SPACE_API_KEY,
+    }
 
-    if filename.lower().endswith('.pdf'):
-        with fitz.open(stream=file_bytes, filetype="pdf") as doc:
-            for page in doc:
-                try:
-                    # Reduz resolução e converte para tons de cinza
-                    pix = page.get_pixmap(dpi=100, grayscale=True)
-                    img_bytes = pix.tobytes("png")
+    response = requests.post(url, data=payload, files=files, headers=headers)
+    result = response.json()
 
-                    pil_img = Image.open(io.BytesIO(img_bytes)).convert("L")
-                    texto_extraido += pytesseract.image_to_string(pil_img, lang='por') + "\n"
-                    pil_img.close()
-                except Exception as e:
-                    print(f"Erro ao processar página do PDF: {e}")
-                    continue
-    else:
-        pil_img = Image.open(io.BytesIO(file_bytes)).convert("L")
-        texto_extraido = pytesseract.image_to_string(pil_img, lang='por')
-        pil_img.close()
+    if result.get("IsErroredOnProcessing"):
+        raise ValueError(result.get("ErrorMessage") or "Erro no OCR externo.")
 
-    return texto_extraido
+    return result["ParsedResults"][0]["ParsedText"]
 
 def analisar_texto(texto):
-    """Realiza as análises de fraude no texto extraído."""
     erros_detectados = []
     texto_em_minusculo = texto.lower()
 
-    # Palavras suspeitas
     PALAVRAS_SUSPEITAS = [
-        "dispensa de licitacao", 
-        "carater de urgencia", 
-        "pagamento retroativo", 
+        "dispensa de licitacao",
+        "carater de urgencia",
+        "pagamento retroativo",
         "inexigibilidade de licitacao"
     ]
 
@@ -71,7 +55,6 @@ def analisar_texto(texto):
         if palavra in texto_em_minusculo:
             erros_detectados.append(f"Alerta de Termo Sensível: A expressão '{palavra}' foi encontrada.")
 
-    # Datas inválidas
     datas = re.findall(r"\d{2}/\d{2}/\d{4}", texto)
     for data in datas:
         try:
@@ -97,7 +80,7 @@ def index():
         if file:
             try:
                 file_bytes = file.read()
-                texto_extraido = extrair_texto_do_arquivo(file_bytes, file.filename)
+                texto_extraido = extrair_texto_ocr_space(file_bytes, file.filename)
 
                 if not texto_extraido.strip():
                     raise ValueError("Nenhum texto pôde ser extraído do documento.")
