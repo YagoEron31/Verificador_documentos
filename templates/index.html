@@ -1,120 +1,76 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analisador de Documentos Públicos</title>
+    <title>Verificador de Documentos</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Adiciona cores específicas para cada status de resultado */
-        .status-seguro { background-color: #dcfce7; color: #166534; border-left-color: #22c55e; }
-        .status-suspeito { background-color: #fee2e2; color: #991b1b; border-left-color: #ef4444; }
-        .status-erro { background-color: #ffedd5; color: #9a3412; border-left-color: #f97316; }
-    </style>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
-    <div class="container mx-auto px-4 py-8">
-        
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">Analisador de Documentos Públicos</h1>
-            <p class="text-gray-600">Envie um documento (PDF ou Imagem) para extrair o texto e identificar possíveis irregularidades.</p>
-        </header>
+<body class="bg-gray-100 font-sans p-6">
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl space-y-6">
+        <h1 class="text-2xl font-bold text-center text-blue-700">Verificador de Documentos Oficiais</h1>
 
-        <main class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
-            <form action="/" method="post" enctype="multipart/form-data">
-                <label for="file-upload" class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
-                    <div id="upload-prompt" class="flex flex-col items-center justify-center text-center">
-                        <i class="fas fa-cloud-upload-alt text-gray-400 text-4xl mb-3"></i>
-                        <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Clique para enviar</span> ou arraste o arquivo</p>
-                        <p class="text-xs text-gray-500">PDF, JPG, PNG</p>
-                    </div>
-                    <div id="file-info" class="hidden text-center">
-                         <i class="fas fa-file-alt text-indigo-500 text-4xl mb-3"></i>
-                         <p class="text-sm text-gray-700 font-semibold" id="file-name"></p>
-                    </div>
-                    <input id="file-upload" name="file" type="file" class="hidden" required/>
-                </label>
-                 <button type="submit" id="submit-btn" class="hidden mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center">
-                    <i class="fas fa-search mr-2"></i> Analisar Documento
-                </button>
-            </form>
+        <!-- Formulário de cadastro e análise -->
+        <form method="POST" enctype="multipart/form-data" class="space-y-4">
+            <input type="hidden" name="action" value="cadastrar">
+            <label class="block text-sm font-medium text-gray-700">Upload do Documento (PDF ou imagem):</label>
+            <input type="file" name="file" accept="application/pdf,image/*" class="border rounded p-2 w-full">
+
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded w-full">Cadastrar e Analisar Documento</button>
 
             {% if erro_upload %}
-            <div class="mt-6 p-4 rounded-lg status-erro border-l-4">
-                <h3 class="font-bold text-lg"><i class="fas fa-exclamation-triangle mr-2"></i>Erro no Upload</h3>
-                <p>{{ erro_upload }}</p>
-            </div>
+                <p class="text-red-600 font-medium mt-2">{{ erro_upload }}</p>
             {% endif %}
+        </form>
 
-            {% if resultado %}
-            <div class="mt-8 border-t pt-6">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Resultado da Análise</h2>
-                
-                <div class="p-4 rounded-lg border-l-4
-                    {% if resultado.status == 'SEGURO' %} status-seguro
-                    {% elif resultado.status == 'SUSPEITO' %} status-suspeito
-                    {% else %} status-erro {% endif %}">
-                    
-                    <div class="flex justify-between items-center">
-                        <h3 class="font-bold text-lg">
-                            {% if resultado.status == 'SEGURO' %} <i class="fas fa-check-circle mr-2"></i>Status: Documento Seguro 
-                            {% elif resultado.status == 'SUSPEITO' %} <i class="fas fa-exclamation-triangle mr-2"></i>Status: Documento Suspeito
-                            {% else %} <i class="fas fa-times-circle mr-2"></i>Status: Erro na Análise
-                            {% endif %}
-                        </h3>
-                        {% if resultado.fonte %}
-                        <span class="text-xs font-medium bg-gray-200 text-gray-700 py-1 px-2 rounded-full">{{ resultado.fonte }}</span>
-                        {% endif %}
-                    </div>
-                    
-                    {% if resultado.erros %}
-                    <ul class="list-disc list-inside mt-2 text-sm">
-                        {% for erro in resultado.erros %}
+        <hr class="my-4">
+
+        <!-- Formulário de verificação por hash -->
+        <form method="POST" class="space-y-4">
+            <input type="hidden" name="action" value="consultar">
+            <label class="block text-sm font-medium text-gray-700">Consultar por Hash SHA256:</label>
+            <input type="text" name="hash_consulta" placeholder="Cole aqui o hash..." class="border rounded p-2 w-full">
+
+            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded w-full">Verificar Documento</button>
+
+            {% if erro_consulta %}
+                <p class="text-red-600 font-medium mt-2">{{ erro_consulta }}</p>
+            {% endif %}
+        </form>
+
+        <!-- Resultado de Análise ou Consulta -->
+        {% if resultado %}
+            <div class="mt-6 p-4 border rounded bg-gray-50">
+                <h2 class="text-lg font-bold text-blue-700 mb-2">Resultado da Análise</h2>
+                <p><strong>Status:</strong> {{ resultado.status }}</p>
+                <p><strong>Hash:</strong> {{ resultado.hash }}</p>
+                <p class="mt-2"><strong>Erros/Alertas:</strong></p>
+                <ul class="list-disc list-inside text-red-600">
+                    {% for erro in resultado.erros %}
                         <li>{{ erro }}</li>
-                        {% endfor %}
-                    </ul>
-                    {% endif %}
-                </div>
-
-                <div class="mt-6 text-xs font-mono text-gray-500 break-all">
-                    <strong>Hash do conteúdo (SHA-256):</strong> {{ resultado.hash }}
-                </div>
-
-                {% if resultado.texto %}
-                <div class="mt-6">
-                    <h3 class="font-semibold text-gray-700 mb-2">Texto Extraído:</h3>
-                    <div class="w-full h-48 p-2 border rounded bg-gray-50 text-xs text-gray-600 overflow-auto">
-                        <pre style="white-space: pre-wrap;">{{ resultado.texto }}</pre>
-                    </div>
-                </div>
-                {% endif %}
+                    {% endfor %}
+                </ul>
+                <details class="mt-4">
+                    <summary class="cursor-pointer text-sm text-blue-600">Ver texto extraído</summary>
+                    <pre class="bg-white p-2 border rounded text-sm mt-2 whitespace-pre-wrap">{{ resultado.texto }}</pre>
+                </details>
             </div>
-            {% endif %}
-        </main>
+        {% elif consulta_resultado %}
+            <div class="mt-6 p-4 border rounded bg-gray-50">
+                <h2 class="text-lg font-bold text-green-700 mb-2">Documento Encontrado</h2>
+                <p><strong>Status:</strong> {{ consulta_resultado.status }}</p>
+                <p><strong>Hash:</strong> {{ consulta_resultado.hash_sha256 }}</p>
+                <p class="mt-2"><strong>Erros/Alertas:</strong></p>
+                <ul class="list-disc list-inside text-red-600">
+                    {% for erro in consulta_resultado.erros_detectados %}
+                        <li>{{ erro }}</li>
+                    {% endfor %}
+                </ul>
+                <details class="mt-4">
+                    <summary class="cursor-pointer text-sm text-blue-600">Ver texto extraído</summary>
+                    <pre class="bg-white p-2 border rounded text-sm mt-2 whitespace-pre-wrap">{{ consulta_resultado.texto_extraido }}</pre>
+                </details>
+            </div>
+        {% endif %}
     </div>
-    
-    <script>
-        const fileInput = document.getElementById('file-upload');
-        const submitBtn = document.getElementById('submit-btn');
-        const uploadPrompt = document.getElementById('upload-prompt');
-        const fileInfo = document.getElementById('file-info');
-        const fileNameDisplay = document.getElementById('file-name');
-
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                // Mostra o nome do arquivo e o botão
-                fileNameDisplay.textContent = fileInput.files[0].name;
-                uploadPrompt.classList.add('hidden');
-                fileInfo.classList.remove('hidden');
-                submitBtn.classList.remove('hidden');
-            } else {
-                // Esconde o nome do arquivo e o botão
-                uploadPrompt.classList.remove('hidden');
-                fileInfo.classList.add('hidden');
-                submitBtn.classList.add('hidden');
-            }
-        });
-    </script>
 </body>
 </html>
