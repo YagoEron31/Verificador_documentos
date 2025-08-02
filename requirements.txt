@@ -2,6 +2,6 @@ Flask
 gunicorn
 Pillow
 pytesseract
-PyMuPDF
+PyMuPDF==1.24.1
 supabase
 python-dotenv
