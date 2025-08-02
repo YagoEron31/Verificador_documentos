@@ -1,7 +1,5 @@
 Flask
 gunicorn
-Pillow
-pytesseract
-PyMuPDF==1.24.1
 supabase
 python-dotenv
+requests
