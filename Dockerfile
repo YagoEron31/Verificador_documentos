@@ -4,11 +4,9 @@ FROM python:3.11-slim
 # Definimos um diretório de trabalho dentro do nosso contêiner
 WORKDIR /app
 
-# ATUALIZAMOS e INSTALAMOS nossas dependências de sistema (Tesseract, etc.)
-RUN apt-get update && apt-get install -y \
-    tesseract-ocr \
-    tesseract-ocr-por \
-    && rm -rf /var/lib/apt/lists/*
+# ATUALIZAMOS, INSTALAMOS E DEPOIS LIMPAMOS O CACHE
+# A adição do 'rm -rf' no final é a otimização
+RUN apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-por poppler-utils && rm -rf /var/lib/apt/lists/*
 
 # Copiamos nosso arquivo de requisitos para dentro do contêiner
 COPY requirements.txt .
