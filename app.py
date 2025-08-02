@@ -1,117 +1,117 @@
-from flask import Flask, request, jsonify
-import hashlib
-import os
-import requests
-from supabase import create_client, Client
-from datetime import datetime
-from werkzeug.utils import secure_filename
-
-# =====================
-# 🔐 CONFIGURAÇÕES
-# =====================
-SUPABASE_URL = "https://<SEU_PROJETO>.supabase.co"  # ← substitua
-SUPABASE_KEY = "K81365576488957"
-SUPABASE_BUCKET = "armazenamento"
-
-OCR_API_KEY = os.getenv("OCR_SPACE_API_KEY")  # variável de ambiente
-OCR_API_URL = "https://api.ocr.space/parse/image"
-
+# --- Configuração do Flask ---
 app = Flask(__name__)
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# =====================
-# 📌 FUNÇÕES ÚTEIS
-# =====================
-def calcular_hash(file_bytes):
-    return hashlib.sha256(file_bytes).hexdigest()
+# =================================================================================
+# --- MÓDULO DE ANÁLISE (NOSSA INTELIGÊNCIA INTEGRADA) ---
+# =================================================================================
 
-def upload_pdf_para_storage(file_bytes, nome_arquivo, id_arquivo):
-    nome_seguro = secure_filename(nome_arquivo)
-    caminho_storage = f"{id_arquivo}_{nome_seguro}"
-    supabase.storage.from_(SUPABASE_BUCKET).upload(
-        caminho_storage, file_bytes, file_options={"content-type": "application/pdf", "upsert": True}
-    )
-    return caminho_storage
+def analisar_texto_completo(texto):
+"""
+   Executa todas as nossas regras de verificação no texto extraído.
+@@ -34,7 +30,6 @@ def analisar_texto_completo(texto):
+palavras_para_realcar = set()
+texto_em_minusculo = texto.lower()
 
-def enviar_para_ocr(file_bytes):
-    response = requests.post(
-        OCR_API_URL,
-        files={"file": ("documento.pdf", file_bytes)},
-        data={"apikey": OCR_API_KEY, "language": "por"}
-    )
-    return response.json()
+    # --- Regra 1: Nepotismo (com lista de exceções) ---
+PALAVRAS_INSTITUCIONAIS = [
+'campus', 'instituto', 'secretaria', 'prefeitura', 'comissao', 'diretoria', 
+'coordenacao', 'avaliacao', 'servicos', 'companhia', 'programa', 'nacional', 
+@@ -52,7 +47,6 @@ def analisar_texto_completo(texto):
+erros_detectados.append(erro)
+palavras_para_realcar.add(nome)
 
-# =====================
-# 🚀 ENDPOINT PRINCIPAL
-# =====================
-@app.route('/upload', methods=['POST'])
-def upload():
-    file = request.files.get('file')
-    if not file:
-        return jsonify({"erro": "Nenhum arquivo enviado"}), 400
+    # --- Regra 2: Datas Inválidas ---
+datas = re.findall(r"\d{2}/\d{2}/\d{4}", texto)
+for data in datas:
+try:
+@@ -61,20 +55,17 @@ def analisar_texto_completo(texto):
+erros_detectados.append(f"Possível adulteração: A data '{data}' é inválida.")
+except ValueError:
+continue
+    
+    # --- Regra 3: Palavras-Chave Suspeitas ---
+ 
+PALAVRAS_SUSPEITAS = ["dispensa de licitacao", "carater de urgencia", "pagamento retroativo", "inexigibilidade de licitacao"]
+for palavra in PALAVRAS_SUSPEITAS:
+if palavra in texto_em_minusculo:
+erro = f"Alerta de Termo Sensível: A expressão '{palavra}' foi encontrada."
+erros_detectados.append(erro)
+palavras_para_realcar.add(palavra)
 
-    file_bytes = file.read()
-    hash_sha256 = calcular_hash(file_bytes)
+    # --- Regra 4: Análise Estrutural ---
+if not re.search(r"(of[íi]cio|processo|portaria)\s+n[ºo]", texto_em_minusculo):
+erros_detectados.append("Alerta Estrutural: Não foi encontrado um número de documento oficial (Ofício, Processo, etc.).")
 
-    # Verifica se já existe hash
-    resultado_existente = supabase.table("analises").select("*").eq("hash_sha256", hash_sha256).execute()
-    if resultado_existente.data:
-        return jsonify({"mensagem": "Documento já analisado", "dados": resultado_existente.data[0]}), 200
+    # --- Regra 5: Auditor de Dispensa de Licitação ---
+LIMITE_DISPENSA_SERVICOS = 59906.02
+if "dispensa de licitacao" in texto_em_minusculo:
+valores_encontrados = re.findall(r"R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})", texto)
+@@ -109,10 +100,6 @@ def enviar_alerta_discord(resultado):
+except Exception as e:
+print(f"Erro ao enviar notificação para o Discord: {e}")
 
-    # 1. Salva na tabela documentos_oficiais
-    documento = supabase.table("documentos_oficiais").insert({
-        "created_at": datetime.utcnow().isoformat(),
-        "nome_arquivo": file.filename,
-        "hash_sha256": hash_sha256
-    }).execute()
+# =================================================================================
+# --- ROTAS DA APLICAÇÃO (SUA ESTRUTURA ORIGINAL) ---
+# =================================================================================
 
-    if not documento.data:
-        return jsonify({"erro": "Erro ao salvar em documentos_oficiais"}), 500
+@app.route('/', methods=['GET', 'POST'])
+def index():
+resultado_analise = None
+@@ -138,7 +125,6 @@ def index():
+except Exception as e:
+erro_consulta = f"Erro ao consultar o banco de dados: {e}"
 
-    doc_id = documento.data[0]["id"]
+        # --- Ação de Cadastrar e Analisar Novo Documento ---
+elif action == 'cadastrar':
+if 'file' not in request.files or request.files['file'].filename == '':
+erro_upload = "Nenhum arquivo selecionado para upload."
+@@ -147,7 +133,6 @@ def index():
+try:
+file_bytes = file.read()
 
-    # 2. Envia o arquivo pro Storage
-    caminho_storage = upload_pdf_para_storage(file_bytes, file.filename, doc_id)
+                    # 1. Extrai o texto via API
+texto_extraido = requests.post(
+"https://api.ocr.space/parse/image",
+headers={'apikey': OCR_SPACE_API_KEY},
+@@ -160,7 +145,7 @@ def index():
 
-    # 3. Atualiza o campo caminho_storage na tabela documentos_oficiais
-    supabase.table("documentos_oficiais").update({
-        "caminho_storage": caminho_storage
-    }).eq("id", doc_id).execute()
+hash_sha256 = hashlib.sha256(texto_extraido.encode('utf-8')).hexdigest()
 
-    # 4. Envia para o OCR
-    resultado_ocr = enviar_para_ocr(file_bytes)
+                    # 2. Verifica se a análise já existe no banco
 
-    # 5. Extrai dados
-    if resultado_ocr.get("IsErroredOnProcessing"):
-        texto_extraido = None
-        erros = resultado_ocr.get("ErrorMessage", [])
-        status = "erro"
-    else:
-        parsed_results = resultado_ocr.get("ParsedResults", [])
-        texto_extraido = parsed_results[0].get("ParsedText") if parsed_results else None
-        erros = []
-        status = "sucesso"
+data, count = supabase.table('analises').select('*').eq('hash_sha256', hash_sha256).execute()
 
-    # 6. Salva em analises
-    supabase.table("analises").insert({
-        "created_at": datetime.utcnow().isoformat(),
-        "hash_sha256": hash_sha256,
-        "status": status,
-        "erros_detectados": erros,
-        "texto_extraido": texto_extraido,
-        "caminho_storage": caminho_storage
-    }).execute()
+if len(data[1]) > 0:
+@@ -174,7 +159,7 @@ def index():
+"texto_realcado": analise_salva['texto_extraido'] # Simplificação, poderia realçar aqui também
+}
+else:
+                        # 3. Se for novo, executa nossa análise completa
 
-    return jsonify({
-        "mensagem": "Arquivo processado com sucesso",
-        "hash": hash_sha256,
-        "status": status,
-        "erros": erros,
-        "texto_extraido": texto_extraido
-    }), 200
+analise = analisar_texto_completo(texto_extraido)
 
-# =====================
-# ▶️ RODAR APP
-# =====================
-if __name__ == '__main__':
-    app.run(debug=True)
+resultado_analise = {
+@@ -184,21 +169,21 @@ def index():
+"texto": texto_extraido
+}
+
+                        # 4. Realce de Evidências
+
+texto_realcado = texto_extraido
+for palavra in analise['palavras_realcar']:
+texto_realcado = re.sub(f"({re.escape(palavra)})", r"<mark>\1</mark>", texto_realcado, flags=re.IGNORECASE)
+resultado_analise['texto_realcado'] = texto_realcado
+
+                        # 5. Salva a nova análise no Supabase
+
+supabase.table('analises').insert({
+'hash_sha256': hash_sha256,
+'status': resultado_analise['status'],
+'erros_detectados': resultado_analise['erros'],
+'texto_extraido': texto_extraido
+}).execute()
+
+                        # 6. Se for suspeito, envia o alerta para o Discord
+
+if resultado_analise['status'] == 'SUSPEITO':
+enviar_alerta_discord(resultado_analise)
