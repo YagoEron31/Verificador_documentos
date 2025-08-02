@@ -4,3 +4,4 @@ supabase
 python-dotenv
 requests
 werkzeug
+psycopg2-binary
