@@ -10,8 +10,10 @@ import fitz # PyMuPDF
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
+# Carrega variáveis de ambiente do arquivo .env (para teste local)
 load_dotenv()
 
+# --- Configuração do Tesseract e Supabase ---
 IS_ON_RENDER = os.environ.get('RENDER') == 'true'
 if not IS_ON_RENDER:
     try:
@@ -22,16 +24,17 @@ if not IS_ON_RENDER:
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# ---------------------------------------------
 
 app = Flask(__name__)
 
 def extrair_texto_do_arquivo(file_bytes, filename):
+    """Extrai texto de um arquivo (PDF ou imagem) a partir de bytes."""
     texto_extraido = ""
     if filename.lower().endswith('.pdf'):
         with fitz.open(stream=file_bytes, filetype="pdf") as doc:
             for page in doc:
-                # OTIMIZAÇÃO: Geramos a imagem em tons de cinza para economizar memória
-                pix = page.get_pixmap(grayscale=True, dpi=150)
+                pix = page.get_pixmap(dpi=100)
                 img_bytes = pix.tobytes("png")
                 pil_img = Image.open(io.BytesIO(img_bytes))
                 texto_extraido += pytesseract.image_to_string(pil_img, lang='por') + "\n"
@@ -41,13 +44,27 @@ def extrair_texto_do_arquivo(file_bytes, filename):
     return texto_extraido
 
 def analisar_texto(texto):
+    """Realiza as análises de fraude no texto extraído."""
     erros_detectados = []
     texto_em_minusculo = texto.lower()
-    # Adicione sua lógica de análise aqui
+
+    # Sua lógica de análise completa vai aqui
+    # Exemplo: Palavras Suspeitas
     PALAVRAS_SUSPEITAS = ["dispensa de licitacao", "carater de urgencia", "pagamento retroativo", "inexigibilidade de licitacao"]
     for palavra in PALAVRAS_SUSPEITAS:
         if palavra in texto_em_minusculo:
             erros_detectados.append(f"Alerta de Termo Sensível: A expressão '{palavra}' foi encontrada.")
+    
+    # Exemplo: Datas Inválidas
+    datas = re.findall(r"\d{2}/\d{2}/\d{4}", texto)
+    for data in datas:
+        try:
+            dia, mes, _ = map(int, data.split('/'))
+            if mes > 12 or dia > 31 or mes == 0 or dia == 0:
+                erros_detectados.append(f"Possível adulteração: A data '{data}' é inválida.")
+        except ValueError:
+            continue
+
     status = "SUSPEITO" if erros_detectados else "SEGURO"
     return {"status": status, "erros": erros_detectados}
 
