@@ -1,189 +1,184 @@
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
+from flask import Flask, request, jsonify, send_from_directory, render_template
 import hashlib
 import requests
 import os
-import sqlite3
-import re
 from datetime import datetime
-import logging
+import psycopg2
 from werkzeug.utils import secure_filename
 
-# Configuração básica
-app = Flask(__name__)
-CORS(app)  # Habilita CORS para todas as rotas
-
 # Configurações
-DATABASE = 'documentos.db'
-UPLOAD_FOLDER = 'temp_uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')  # já está no Render
+UPLOAD_FOLDER = 'uploads'
+BUCKET_NAME = 'armazenamento'
+
+# Supabase
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+
+# PostgreSQL
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT", 5432)
+
+app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Configuração de logs
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Cria pasta se não existir
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Banco de dados
-def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS documentos (
-            id TEXT PRIMARY KEY,
-            texto TEXT NOT NULL,
-            status TEXT NOT NULL,
-            erros TEXT,
-            data_criacao TIMESTAMP
-        )
-    ''')
-    return conn
 
-# Funções de Análise de Texto
-def validar_cpf(texto):
-    cpfs = re.findall(r'\d{3}\.?\d{3}\.?\d{3}-?\d{2}', texto)
-    return len(cpfs) > 0
+def calcular_hash_sha256(file_path):
+    sha256 = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(4096):
+            sha256.update(chunk)
+    return sha256.hexdigest()
 
-def validar_cnpj(texto):
-    cnpjs = re.findall(r'\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}', texto)
-    return len(cnpjs) > 0
 
-def detectar_dados_sensiveis(texto):
-    erros = []
-    if re.search(r'\b\d{11}\b', texto):
-        erros.append("Possível CPF não formatado")
-    if re.search(r'\b\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b', texto):
-        erros.append("Possível número de cartão de crédito")
-    return erros if erros else None
+def salvar_no_storage(nome_arquivo, file_path):
+    import requests
 
-def analisar_texto(texto):
-    erros = []
-    status = "válido"
-    
-    if len(texto) < 50:
-        erros.append("Texto muito curto (mínimo 50 caracteres)")
-        status = "inválido"
-    
-    if sensiveis := detectar_dados_sensiveis(texto):
-        erros.extend(sensiveis)
-        status = "inválido"
-    
-    tem_cpf = validar_cpf(texto)
-    tem_cnpj = validar_cnpj(texto)
-    
-    if not tem_cpf and not tem_cnpj:
-        erros.append("Nenhum CPF/CNPJ válido detectado")
-        status = "suspeito"
-    
-    return {
-        "status": status,
-        "erros": erros,
-        "tem_cpf": tem_cpf,
-        "tem_cnpj": tem_cnpj
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
     }
 
-# OCR
-def extrair_texto_ocr(file_path):
-    try:
+    with open(file_path, 'rb') as file_data:
         response = requests.post(
-            'https://api.ocr.space/parse/image',
-            files={'file': open(file_path, 'rb')},
-            data={
-                'apikey': os.getenv('OCR_SPACE_API_KEY'),
-                'language': 'por',
-                'isOverlayRequired': False
-            },
-            timeout=30
+            f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{nome_arquivo}",
+            headers=headers,
+            files={"file": (nome_arquivo, file_data)}
         )
-        resultado = response.json()
-        if not resultado.get('IsErroredOnProcessing', True):
-            return resultado['ParsedResults'][0]['ParsedText'].strip()
-        logger.error(f"Erro no OCR: {resultado.get('ErrorMessage')}")
-        return None
-    except Exception as e:
-        logger.error(f"Erro na requisição OCR: {str(e)}")
-        return None
 
-# Rotas
+    if response.status_code not in [200, 201]:
+        raise Exception(f"Erro ao salvar no Supabase Storage: {response.text}")
+
+    return f"{BUCKET_NAME}/{nome_arquivo}"
+
+
+def extrair_texto_ocr(file_path):
+    url = 'https://api.ocr.space/parse/image'
+    with open(file_path, 'rb') as f:
+        response = requests.post(
+            url,
+            files={'file': f},
+            data={
+                'apikey': OCR_SPACE_API_KEY,
+                'language': 'por'
+            }
+        )
+    resultado = response.json()
+    if not resultado['IsErroredOnProcessing']:
+        texto_extraido = resultado['ParsedResults'][0]['ParsedText']
+        return texto_extraido.strip(), None
+    else:
+        return "", resultado.get("ErrorMessage")
+
+
+def inserir_documento(hash_sha256, nome_arquivo, caminho_storage):
+    try:
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT
+        )
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM documentos_oficiais WHERE hash_sha256 = %s", (hash_sha256,))
+        if cursor.fetchone():
+            return False  # Já existe
+
+        cursor.execute("""
+            INSERT INTO documentos_oficiais (nome_arquivo, caminho_storage, hash_sha256, created_at)
+            VALUES (%s, %s, %s, %s)
+        """, (nome_arquivo, caminho_storage, hash_sha256, datetime.now()))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Erro ao inserir documento: {e}")
+        return False
+
+
+def inserir_analise(hash_sha256, texto_extraido, status, erros, caminho_storage):
+    try:
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            host=DB_HOST,
+            port=DB_PORT
+        )
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO analises (hash_sha256, texto_extraido, status, erros_detectados, caminho_storage, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (hash_sha256, texto_extraido, status, erros, caminho_storage, datetime.now()))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Erro ao inserir análise: {e}")
+
+
 @app.route('/')
-def home():
+def index():
     return render_template('index.html')
+
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    logger.debug("Recebendo requisição de upload...")
-    
     if 'file' not in request.files:
-        logger.warning("Nenhum arquivo enviado")
-        return jsonify({"erro": "Nenhum arquivo enviado"}), 400
+        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
 
     file = request.files['file']
     if file.filename == '':
-        logger.warning("Nome de arquivo vazio")
-        return jsonify({"erro": "Nome de arquivo inválido"}), 400
+        return jsonify({'erro': 'Nome de arquivo inválido'}), 400
+
+    filename = secure_filename(file.filename)
+    local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(local_path)
+
+    hash_sha256 = calcular_hash_sha256(local_path)
+
+    # Nome novo com hash para evitar duplicatas
+    filename_com_hash = f"{hash_sha256}_{filename}"
 
     try:
-        # Salvar arquivo temporário
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
-        logger.debug(f"Arquivo salvo temporariamente em: {file_path}")
+        # Salvar no storage
+        caminho_storage = salvar_no_storage(filename_com_hash, local_path)
 
-        # Extrair texto
-        texto = extrair_texto_ocr(file_path)
-        os.remove(file_path)
-        
-        if not texto:
-            logger.error("Falha ao extrair texto do arquivo")
-            return jsonify({"erro": "Falha ao extrair texto"}), 500
+        # Salvar no banco se não existir
+        novo = inserir_documento(hash_sha256, filename, caminho_storage)
 
-        # Analisar texto
-        analise = analisar_texto(texto)
-        hash_id = hashlib.sha256(texto.encode()).hexdigest()
+        # OCR
+        texto_extraido, erro_ocr = extrair_texto_ocr(local_path)
 
-        # Salvar no banco
-        conn = get_db()
-        conn.execute(
-            '''INSERT INTO documentos 
-            (id, texto, status, erros, data_criacao) 
-            VALUES (?, ?, ?, ?, ?)''',
-            (hash_id, texto, analise['status'], 
-             str(analise['erros']), datetime.now())
-        )
-        conn.commit()
-        conn.close()
-        logger.info(f"Documento salvo com ID: {hash_id}")
+        status = "sucesso" if not erro_ocr else "falha"
+        erros = None if not erro_ocr else str(erro_ocr)
+
+        inserir_analise(hash_sha256, texto_extraido, status, erros, caminho_storage)
 
         return jsonify({
-            "hash_id": hash_id,
-            "texto": texto,
-            "analise": analise
+            "status": status,
+            "hash": hash_sha256,
+            "nome_arquivo": filename,
+            "texto_extraido": texto_extraido,
+            "erro_ocr": erro_ocr,
+            "caminho_storage": caminho_storage
         })
 
     except Exception as e:
-        logger.error(f"Erro no processamento: {str(e)}", exc_info=True)
-        return jsonify({"erro": "Falha interna no servidor"}), 500
+        return jsonify({"erro": str(e)}), 500
 
-@app.route('/documento/<hash_id>', methods=['GET'])
-def get_documento(hash_id):
-    try:
-        conn = get_db()
-        doc = conn.execute(
-            '''SELECT texto, status, erros 
-            FROM documentos WHERE id = ?''', 
-            (hash_id,)
-        ).fetchone()
-        conn.close()
-
-        if doc:
-            return jsonify({
-                "texto": doc[0],
-                "status": doc[1],
-                "erros": eval(doc[2]) if doc[2] else []
-            })
-        return jsonify({"erro": "Documento não encontrado"}), 404
-    except Exception as e:
-        logger.error(f"Erro ao buscar documento: {str(e)}")
-        return jsonify({"erro": "Falha interna"}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(debug=True)
