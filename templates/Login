@@ -1,1 +1,86 @@
+<script>
+        const btnCidadao = document.getElementById('btnCidadao');
+        const btnServidor = document.getElementById('btnServidor');
+        const servidorFields = document.getElementById('servidorFields');
+        const loginForm = document.getElementById('loginForm');
+        const loginButton = document.getElementById('loginButton');
+        const loginText = document.getElementById('loginText');
+        const loginSpinner = document.getElementById('loginSpinner');
+        const loginMessage = document.getElementById('loginMessage');
 
+        let isServidor = false;
+
+        // Lógica para alternar entre Cidadão e Servidor
+        btnCidadao.addEventListener('click', () => {
+            isServidor = false;
+            servidorFields.classList.add('hidden');
+            btnCidadao.classList.add('bg-blue-600', 'text-white');
+            btnCidadao.classList.remove('hover:bg-gray-50');
+            btnServidor.classList.remove('bg-blue-600', 'text-white');
+            btnServidor.classList.add('hover:bg-gray-50');
+        });
+
+        btnServidor.addEventListener('click', () => {
+            isServidor = true;
+            servidorFields.classList.remove('hidden');
+            btnServidor.classList.add('bg-blue-600', 'text-white');
+            btnServidor.classList.remove('hover:bg-gray-50');
+            btnCidadao.classList.remove('bg-blue-600', 'text-white');
+            btnCidadao.classList.add('hover:bg-gray-50');
+        });
+
+        // Lógica para lidar com o envio do formulário
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            loginText.textContent = 'Acessando...';
+            loginSpinner.classList.remove('hidden');
+            loginButton.disabled = true;
+            loginMessage.classList.add('hidden');
+
+            const email = loginForm.email.value;
+            const password = loginForm.password.value;
+
+            try {
+                // Aqui você pode decidir qual rota chamar. 
+                // Para simplificar, vamos usar a rota de login para ambos.
+                // Em um caso real, você poderia ter uma rota /signup aqui.
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('success', data.message);
+                    // Aqui você redirecionaria para a página de usuário logado
+                    // window.location.href = '/dashboard';
+                } else {
+                    showMessage('error', data.error || 'Ocorreu um erro desconhecido.');
+                }
+
+            } catch (error) {
+                showMessage('error', 'Não foi possível conectar ao servidor.');
+            } finally {
+                loginText.textContent = 'Acessar';
+                loginSpinner.classList.add('hidden');
+                loginButton.disabled = false;
+            }
+        });
+
+        function showMessage(type, message) {
+            loginMessage.textContent = message;
+            loginMessage.classList.remove('hidden');
+            if (type === 'success') {
+                loginMessage.classList.remove('bg-red-100', 'text-red-700');
+                loginMessage.classList.add('bg-green-100', 'text-green-700');
+            } else { // error
+                loginMessage.classList.remove('bg-green-100', 'text-green-700');
+                loginMessage.classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+    </script>
+</body>
+</html>
