@@ -4,7 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prefeitura de Apodi/RN - Sistema de Integridade Documental</title>
-    </head>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <style>
+        .gradient-bg {
+            /* Exemplo de gradiente azul, você pode ajustar as cores */
+            background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+        }
+        /* Ajuste para o botão "Acessar" que estava com texto branco em fundo branco */
+        a[href="/login"].btn {
+            background-color: #ffffff;
+            color: #3b82f6; /* Cor primária do gradiente */
+        }
+        a[href="/login"].btn:hover {
+            background-color: #eff6ff; /* Um azul bem claro para o hover */
+        }
+    </style>
+</head>
+
 <body class="bg-gray-50 min-h-screen">
     <header class="gradient-bg text-white sticky top-0 z-50">
         <div class="container mx-auto px-4 py-3">
@@ -18,10 +38,10 @@
                 </a>
                 
                 <nav class="flex items-center gap-2">
-                    <a href="/" class="nav-link"><i class="fas fa-home mr-1"></i> Início</a>
-                    <a href="/transparencia" class="nav-link"><i class="fas fa-search mr-1"></i> Transparência</a>
-                    <a href="/verificador" class="nav-link"><i class="fas fa-shield-alt mr-1"></i> Verificador</a>
-                    <a href="/login" class="btn bg-white text-white/10 font-medium px-5 py-2.5 ml-2">
+                    <a href="/" class="nav-link hover:underline"><i class="fas fa-home mr-1"></i> Início</a>
+                    <a href="/transparencia" class="nav-link hover:underline"><i class="fas fa-search mr-1"></i> Transparência</a>
+                    <a href="/verificador" class="nav-link hover:underline"><i class="fas fa-shield-alt mr-1"></i> Verificador</a>
+                    <a href="/login" class="btn font-medium px-5 py-2.5 ml-2 rounded-md">
                         <i class="fas fa-sign-in-alt mr-2"></i> Acessar
                     </a>
                 </nav>
@@ -36,10 +56,10 @@
                     <h2 class="text-4xl md:text-5xl font-bold mb-6">Integridade e Transparência na Gestão Pública</h2>
                     <p class="text-xl mb-8 opacity-90">Utilizando tecnologia de ponta para garantir a autenticidade de documentos governamentais.</p>
                     <div class="flex flex-col sm:flex-row justify-center gap-4">
-                         <a href="/verificador" class="btn bg-white text-[var(--primary)] font-medium py-3 px-8 rounded-lg text-lg">
+                         <a href="/verificador" class="btn bg-white text-blue-600 font-medium py-3 px-8 rounded-lg text-lg hover:bg-gray-100">
                             <i class="fas fa-shield-alt mr-2"></i> Acessar Ferramenta
                         </a>
-                        <a href="/transparencia" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg">
+                        <a href="/transparencia" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg hover:bg-white hover:text-blue-600">
                             <i class="fas fa-search mr-2"></i> Ver Transparência
                         </a>
                     </div>
