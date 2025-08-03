@@ -3,28 +3,28 @@ import re
 import hashlib
 import io
 import requests
-from flask import Flask, request, render_template, jsonify
-from werkzeug.utils import secure_filename # Importante para salvar o arquivo
-from supabase import create_client, Client
+from flask import Flask, request, render_template
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente
+# Carrega a chave da API de OCR a partir das variáveis de ambiente
 load_dotenv()
-
-# --- Conexão com as APIs ---
 OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-# -----------------------------
 
 app = Flask(__name__)
 
-def extrair_texto_ocr_space(file_bytes):
+# Define as extensões de arquivo permitidas
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
+
+def allowed_file(filename):
+    """Verifica se a extensão do arquivo é permitida."""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extrair_texto_ocr_space(file_bytes, filename):
     """Extrai texto de um arquivo usando a API do OCR.space."""
     url = "https://api.ocr.space/parse/image"
     payload = {'language': 'por', 'isOverlayRequired': 'false', 'OCREngine': 2}
-    files = {'file': file_bytes}
+    files = {'file': (filename, file_bytes)}
     headers = {'apikey': OCR_SPACE_API_KEY}
 
     response = requests.post(url, headers=headers, data=payload, files=files)
@@ -43,11 +43,21 @@ def analisar_texto(texto):
     """Realiza as análises de fraude no texto extraído."""
     erros_detectados = []
     texto_em_minusculo = texto.lower()
-    # Adicione suas regras de análise aqui
+
     PALAVRAS_SUSPEITAS = ["dispensa de licitacao", "carater de urgencia", "pagamento retroativo", "inexigibilidade de licitacao"]
     for palavra in PALAVRAS_SUSPEITAS:
         if palavra in texto_em_minusculo:
             erros_detectados.append(f"Alerta de Termo Sensível: A expressão '{palavra}' foi encontrada.")
+
+    datas = re.findall(r"\d{2}/\d{2}/\d{4}", texto)
+    for data in datas:
+        try:
+            dia, mes, _ = map(int, data.split('/'))
+            if mes > 12 or dia > 31 or mes == 0 or dia == 0:
+                erros_detectados.append(f"Possível adulteração: A data '{data}' é inválida.")
+        except ValueError:
+            continue
+            
     status = "SUSPEITO" if erros_detectados else "SEGURO"
     return {"status": status, "erros": erros_detectados}
 
@@ -60,62 +70,27 @@ def index():
         
         file = request.files['file']
         
+        if not allowed_file(file.filename):
+            erro_msg = "Formato de arquivo não suportado. Por favor, envie um PDF, PNG, JPG ou JPEG."
+            return render_template('index.html', erro_upload=erro_msg)
+        
         if file:
             try:
-                # Lê o conteúdo do arquivo e limpa o nome
                 file_bytes = file.read()
-                nome_arquivo_seguro = secure_filename(file.filename)
-
-                # Extrai o texto e calcula o hash
-                texto_extraido = extrair_texto_ocr_space(file_bytes)
+                texto_extraido = extrair_texto_ocr_space(file_bytes, file.filename)
+                
                 if not texto_extraido.strip():
                      raise ValueError("Nenhum texto pôde ser extraído do documento.")
-                hash_sha256 = hashlib.sha2s56(texto_extraido.encode('utf-8')).hexdigest()
 
-                # 1. VERIFICA SE O DOCUMENTO JÁ FOI ANALISADO (CACHE)
-                data, count = supabase.table('analises').select('*').eq('hash_sha256', hash_sha256).execute()
-
-                if len(data[1]) > 0:
-                    print("Análise encontrada no cache do Supabase.")
-                    analise_salva = data[1][0]
-                    resultado_analise = {
-                        "status": analise_salva['status'], 
-                        "erros": analise_salva['erros_detectados'], 
-                        "hash": analise_salva['hash_sha256'], 
-                        "texto": analise_salva['texto_extraido'],
-                        "fonte": "Banco de Dados (Cache)" # Adiciona a fonte da informação
-                    }
-                else:
-                    # 2. SE FOR NOVO, FAZ A ANÁLISE E SALVA TUDO
-                    print("Documento novo. Analisando e salvando no Supabase.")
-                    
-                    # Salva o arquivo original no Storage
-                    caminho_no_storage = f"documentos/{hash_sha256}-{nome_arquivo_seguro}"
-                    supabase.storage.from_("arquivos").upload(
-                        path=caminho_no_storage,
-                        file=file_bytes,
-                        file_options={"content-type": file.content_type}
-                    )
-                    
-                    # Faz a análise de fraude
-                    analise = analisar_texto(texto_extraido)
-                    
-                    # Salva o resultado da análise no banco de dados
-                    supabase.table('analises').insert({
-                        'hash_sha256': hash_sha256,
-                        'status': analise['status'],
-                        'erros_detectados': analise['erros'],
-                        'texto_extraido': texto_extraido,
-                        'caminho_storage': caminho_no_storage # Salva o caminho do arquivo
-                    }).execute()
-                    
-                    resultado_analise = {
-                        "status": analise['status'], 
-                        "erros": analise['erros'], 
-                        "hash": hash_sha256, 
-                        "texto": texto_extraido,
-                        "fonte": "Nova Análise (API)"
-                    }
+                hash_sha256 = hashlib.sha256(texto_extraido.encode('utf-8')).hexdigest()
+                analise = analisar_texto(texto_extraido)
+                
+                resultado_analise = {
+                    "status": analise['status'],
+                    "erros": analise['erros'],
+                    "hash": hash_sha256,
+                    "texto": texto_extraido
+                }
 
             except Exception as e:
                 resultado_analise = {"status": "ERRO", "erros": [f"Não foi possível processar o arquivo: {e}"]}
