@@ -1,59 +1,71 @@
 import os
-import re
 import hashlib
-import io
 import json
 import requests
-from flask import Flask, request, render_template, jsonify
-from supabase import create_client, Client
+from flask import Flask, request, render_template
+from supabase import create_client
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente
+# Carrega variáveis de ambiente do .env
 load_dotenv()
 
-# --- Configurações e Conexões ---
+# Variáveis de ambiente
 OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
+# Inicializa o Flask
 app = Flask(__name__)
 _supabase_client = None
 
+# ------------------------------
+# Função de conexão preguiçosa
+# ------------------------------
 def get_supabase_client():
-    """Cria e reutiliza uma conexão com o Supabase."""
     global _supabase_client
     if _supabase_client is None:
         _supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
     return _supabase_client
 
-# Define as extensões de arquivo permitidas
+# Extensões de arquivos permitidas
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 
 def allowed_file(filename):
-    """Verifica se a extensão do arquivo é permitida."""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# =================================================================================
-# --- FUNÇÕES DE LÓGICA (Análise, OCR) ---
-# =================================================================================
+# ------------------------------
+# Funções de OCR e Análise
+# ------------------------------
+def extrair_texto_ocr_space(file_bytes, filename):
+    url = 'https://api.ocr.space/parse/image'
+    payload = {
+        'apikey': OCR_SPACE_API_KEY,
+        'language': 'por',
+        'isOverlayRequired': False
+    }
+    files = {'file': (filename, file_bytes)}
+    response = requests.post(url, data=payload, files=files)
+    result = response.json()
+
+    if result.get("IsErroredOnProcessing"):
+        raise Exception(result.get("ErrorMessage", ["Erro no OCR"])[0])
+
+    return result['ParsedResults'][0]['ParsedText']
 
 def analisar_texto_completo(texto):
-    """Executa todas as regras de verificação no texto extraído."""
     erros_detectados = []
-    # (Sua lógica de análise detalhada permanece aqui)
+
+    # Lógica de verificação (exemplo)
+    if "123456" in texto:
+        erros_detectados.append("Número suspeito detectado.")
+
     status = "SUSPEITO" if erros_detectados else "SEGURO"
     return {"status": status, "erros": erros_detectados}
 
-def extrair_texto_ocr_space(file_bytes, filename):
-    """Extrai texto de um arquivo usando a API do OCR.space."""
-    # (Sua lógica de extração de texto via API permanece aqui)
-    return "Texto extraído com sucesso"
-
-# =================================================================================
-# --- ROTAS DA APLICAÇÃO ---
-# =================================================================================
+# ------------------------------
+# Rotas da Aplicação
+# ------------------------------
 
 @app.route('/')
 def home():
@@ -66,31 +78,46 @@ def login_page():
 @app.route('/verificador', methods=['GET', 'POST'])
 def verificador_page():
     if request.method == 'GET':
-        # CORREÇÃO FINAL: Usando o nome exato 'verificação.html'
         return render_template('verificação.html')
 
-    # Lógica de POST...
+    # POST
     if 'file' not in request.files or request.files['file'].filename == '':
         return render_template('verificação.html', erro_upload="Nenhum arquivo selecionado.")
-    
+
     file = request.files['file']
-    
+
     if not allowed_file(file.filename):
         return render_template('verificação.html', erro_upload="Formato de arquivo não suportado.")
 
     try:
         filename = secure_filename(file.filename)
         file_bytes = file.read()
-        
-        # ... (resto da sua lógica de análise completa)
-        
-        resultado_final = {"status": "SUCESSO", "mensagem": "Análise concluída com sucesso!"}
-        return render_template('verificação.html', resultado=resultado_final)
+
+        # OCR
+        texto_extraido = extrair_texto_ocr_space(file_bytes, filename)
+        resultado = analisar_texto_completo(texto_extraido)
+
+        # Supabase
+        supabase = get_supabase_client()
+        hash_sha256 = hashlib.sha256(file_bytes).hexdigest()
+
+        supabase.table('documentos_oficiais').insert({
+            "nome_original": filename,
+            "hash_sha256": hash_sha256,
+            "status": resultado['status'],
+            "erros_detectados": json.dumps(resultado['erros']),
+        }).execute()
+
+        return render_template('verificação.html', resultado=resultado)
 
     except Exception as e:
-        return render_template('verificação.html', resultado={"status": "ERRO", "erros": [f"Erro inesperado: {e}"]})
+        return render_template('verificação.html', resultado={
+            "status": "ERRO",
+            "erros": [f"Erro inesperado: {str(e)}"]
+        })
 
-# ... (outras rotas)
-
+# ------------------------------
+# Execução local
+# ------------------------------
 if __name__ == '__main__':
     app.run(debug=True)
