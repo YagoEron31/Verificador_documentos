@@ -101,12 +101,11 @@ def verificador_page():
         # 2. Analisar o texto
         resultado = analisar_texto_completo(texto_extraido)
 
-        # 3. Calcular o hash do ARQUIVO para exibição
-        hash_sha256 = hashlib.sha256(file_bytes).hexdigest()
-
-        # 4. Tentar salvar no Supabase (sem impedir análise)
+        # 3. Tentar salvar no Supabase (sem impedir análise)
         try:
             supabase = get_supabase_client()
+            hash_sha256 = hashlib.sha256(file_bytes).hexdigest()
+
             supabase.table('analises').insert({
                 "nome_arquivo": filename,
                 "hash_arquivo": hash_sha256,
@@ -114,18 +113,24 @@ def verificador_page():
                 "erros_detectados": resultado['erros'],
                 "texto_extraido": texto_extraido
             }).execute()
+
         except Exception as db_error:
             print(f"[⚠️] Erro ao salvar no Supabase: {db_error}")
 
-        # 5. Retornar resultado da análise com os dados extras para o HTML
-        return render_template('verificação.html', resultado=resultado, texto_extraido=texto_extraido, hash_sha256=hash_sha256)
+        # 4. Retornar resultado da análise
+        return render_template(
+            'verificação.html',
+            resultado=resultado,
+            texto_extraido=texto_extraido,
+            nome_arquivo=filename,
+            hash_arquivo=hash_sha256
+        )
 
     except Exception as e:
-        # Retorna os dados extras como None em caso de erro
         return render_template('verificação.html', resultado={
             "status": "ERRO",
             "erros": [f"Erro inesperado: {str(e)}"]
-        }, texto_extraido=None, hash_sha256=None)
+        })
 
 # =================================================================================
 # Execução local
