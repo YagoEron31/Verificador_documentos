@@ -107,6 +107,7 @@
                     <a href="/transparencia" class="nav-link"><i class="fas fa-search mr-1"></i> Transparência</a>
                     <a href="/verificador" class="nav-link"><i class="fas fa-shield-alt mr-1"></i> Verificador</a>
                     <a href="#contact" class="nav-link"><i class="fas fa-envelope mr-1"></i> Contato</a>
+                    
                     <a href="/login" class="btn bg-white text-[var(--primary)] font-medium px-5 py-2.5 ml-2">
                         <i class="fas fa-sign-in-alt mr-2"></i> Acessar
                     </a>
@@ -122,7 +123,7 @@
                     <h2 class="text-4xl md:text-5xl font-bold mb-6">Documentos públicos com integridade comprovada</h2>
                     <p class="text-xl mb-8 opacity-90">Tecnologia para garantir a autenticidade de documentos governamentais.</p>
                     <div class="flex flex-col sm:flex-row justify-center gap-4">
-                         <a href="/verificador" class="btn bg-white text-[var(--primary)] font-medium py-3 px-8 rounded-lg text-lg">
+                        <a href="/verificador" class="btn bg-white text-[var(--primary)] font-medium py-3 px-8 rounded-lg text-lg">
                             <i class="fas fa-shield-alt mr-2"></i> Acessar Ferramenta
                         </a>
                         <a href="/transparencia" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg text-lg">
@@ -133,48 +134,15 @@
             </div>
         </section>
 
-        <section class="py-20 bg-gray-50">
-            <div class="container mx-auto px-4">
-                <div class="text-center max-w-2xl mx-auto mb-16">
-                    <h2 class="text-3xl font-bold text-gray-900 mb-4">Veja como funciona</h2>
-                    <div class="divider"></div>
-                    <p class="text-gray-600">Exemplo de um documento registrado em nosso sistema</p>
-                </div>
-                
-                <div class="max-w-2xl mx-auto card bg-white overflow-hidden">
-                    <div class="p-8">
-                        <div class="flex justify-between items-start mb-6">
-                            <div>
-                                <h3 class="font-bold text-2xl text-gray-900">Lei Municipal nº 1.245/2025</h3>
-                                <p class="text-gray-500">Câmara Municipal de Vereadores</p>
-                            </div>
-                            <span class="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
-                                <i class="fas fa-check-circle mr-1"></i> Válido
-                            </span>
-                        </div>
-                        <div class="mb-6">
-                            <p class="text-sm font-medium text-gray-500 mb-2">Hash do documento:</p>
-                            <div class="document-hash text-sm">
-                                3a3d86cc8027f68df51e79f2f2e4a8e95bc84adf1a52c36a3b5e7c8f9d0e1f2a
-                            </div>
-                        </div>
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div>
-                                <p class="text-gray-500 text-sm">Data de registro:</p>
-                                <p class="font-medium">15/07/2025 às 14:32</p>
-                            </div>
-                            <a href="/verificador" class="btn bg-[var(--primary)] text-white px-6 py-2.5 w-full sm:w-auto text-center">
-                                <i class="fas fa-search mr-2"></i> Verificar autenticidade
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <section id="contact" class="py-20 bg-white">
-            </section>
-        
+            <div class="container mx-auto px-4">
+                <div class="text-center max-w-2xl mx-auto">
+                    <h2 class="text-3xl font-bold text-gray-900 mb-4">Fale conosco</h2>
+                    <div class="divider"></div>
+                    <p class="text-gray-600">Tem dúvidas ou precisa de suporte? Nossa equipe está pronta para ajudar.</p>
+                </div>
+                 </div>
+        </section>
     </main>
 
     <footer class="bg-gray-900 text-gray-300 py-12">
