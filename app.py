@@ -22,7 +22,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return render_template('Tela_Inicial.html')
+    return render_template('inicial.html')
 
 @app.route('/login')
 def login_page():
@@ -31,12 +31,12 @@ def login_page():
 @app.route('/verificador')
 def verificador_page():
     # Aqui entraria a lógica da sua ferramenta de análise
-    return render_template('Tela_Verificacao.html')
+    return render_template('verificação.html')
     
 @app.route('/transparencia')
 def transparencia_page():
     # Aqui entraria a lógica para buscar dados do banco e listar
-    return render_template('Portal_Transparencia.html')
+    return render_template('transparencia.html')
 
 # =================================================================================
 # --- ROTAS DE API PARA LOGIN E CADASTRO (AGORA COM LÓGICA) ---
