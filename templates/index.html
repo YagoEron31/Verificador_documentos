@@ -3,203 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analisador de PDF</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Analisador de Documentos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { padding: 20px; background-color: #f8f9fa; }
-        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .status-confiavel { color: #28a745; }
-        .status-suspeito { color: #dc3545; }
-        #resultado { display: none; }
-        .json-viewer { 
-            background-color: #f8f9fa; 
-            padding: 15px; 
-            border-radius: 5px; 
-            border: 1px solid #dee2e6;
-            max-height: 300px;
-            overflow-y: auto;
-        }
+        .status-seguro { background-color: #dcfce7; color: #166534; }
+        .status-suspeito { background-color: #fee2e2; color: #991b1b; }
+        .status-erro { background-color: #feefc2; color: #9a3412; }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1 class="text-center mb-4">📄 Analisador de PDF</h1>
+<body class="bg-gray-100 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8">
         
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <strong>Enviar Novo PDF</strong>
-                    </div>
-                    <div class="card-body">
-                        <form id="uploadForm" enctype="multipart/form-data">
-                            <div class="mb-3">
-                                <label for="pdfFile" class="form-label">Selecione um arquivo PDF:</label>
-                                <input class="form-control" type="file" id="pdfFile" accept=".pdf" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Analisar PDF</button>
-                        </form>
-                        <div id="uploadStatus" class="mt-3"></div>
-                    </div>
-                </div>
-            </div>
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Analisador de Documentos Públicos</h1>
+            <p class="text-gray-600">Envie um documento para análise de integridade e detecção de possíveis fraudes.</p>
+        </header>
 
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-info text-white">
-                        <strong>Consultar Análise Existente</strong>
+        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+            <form action="/" method="post" enctype="multipart/form-data">
+                <label for="file-upload" class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <i class="fas fa-cloud-upload-alt text-gray-400 text-4xl mb-3"></i>
+                        <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Clique para enviar</span> ou arraste o arquivo</p>
+                        <p id="file-name" class="text-xs text-blue-600 font-semibold"></p>
                     </div>
-                    <div class="card-body">
-                        <form id="searchForm">
-                            <div class="mb-3">
-                                <label for="hashInput" class="form-label">Digite o Hash SHA-256:</label>
-                                <input type="text" class="form-control" id="hashInput" placeholder="Ex: a1b2c3..." required>
-                            </div>
-                            <button type="submit" class="btn btn-info text-white">Buscar Análise</button>
-                        </form>
-                        <div id="searchStatus" class="mt-3"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <input id="file-upload" name="file" type="file" class="hidden" />
+                </label>
+                <button type="submit" id="submit-btn" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition hidden">
+                    Analisar Documento
+                </button>
+            </form>
 
-        <div id="resultado" class="card mt-4">
-            <div class="card-header bg-secondary text-white">
-                <strong>Resultado da Análise</strong>
+            {% if erro_upload %}
+            <div class="mt-6 p-4 rounded-lg status-erro">
+                <h3 class="font-bold text-lg"><i class="fas fa-exclamation-triangle mr-2"></i>Erro no Upload</h3>
+                <p>{{ erro_upload }}</p>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Status:</strong> <span id="status" class="fw-bold"></span></p>
-                        <p><strong>Hash SHA-256:</strong> <code id="hash"></code></p>
-                        <p><strong>Data da Análise:</strong> <span id="data"></span></p>
-                        
-                        <div class="mb-3">
-                            <strong>Erros Detectados:</strong>
-                            <ul id="erros" class="list-group mt-2"></ul>
-                        </div>
+            {% endif %}
+
+            {% if resultado %}
+            <div class="mt-8 border-t pt-6">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Resultado da Análise</h2>
+                
+                <div class="p-4 rounded-lg 
+                    {% if resultado.status == 'SEGURO' %} status-seguro
+                    {% elif resultado.status == 'SUSPEITO' %} status-suspeito
+                    {% else %} status-erro {% endif %}">
+                    
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-lg">
+                            {% if resultado.status == 'SEGURO' %} <i class="fas fa-check-circle mr-2"></i>Status: Documento Seguro 
+                            {% elif resultado.status == 'SUSPEITO' %} <i class="fas fa-exclamation-triangle mr-2"></i>Status: Documento Suspeito
+                            {% else %} <i class="fas fa-times-circle mr-2"></i>Status: Erro na Análise
+                            {% endif %}
+                        </h3>
+                        {% if resultado.fonte %}
+                        <span class="text-xs font-medium bg-gray-200 text-gray-700 py-1 px-2 rounded-full">{{ resultado.fonte }}</span>
+                        {% endif %}
                     </div>
-                    <div class="col-md-6">
-                        <strong>Texto Extraído:</strong>
-                        <div class="mt-2 p-3 bg-light border rounded" style="max-height: 200px; overflow-y: auto;">
-                            <pre id="texto"></pre>
-                        </div>
+                    
+                    {% if resultado.erros %}
+                    <ul class="list-disc list-inside mt-2 text-sm">
+                        {% for erro in resultado.erros %}
+                        <li>{{ erro }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+
+                <div class="mt-6">
+                    <p class="text-xs font-mono text-gray-500 break-all">Hash do conteúdo (SHA-256): {{ resultado.hash }}</p>
+                </div>
+
+                {% if resultado.texto %}
+                <div class="mt-6">
+                    <h3 class="font-semibold text-gray-700 mb-2">Texto Extraído:</h3>
+                    <div class="w-full h-48 p-2 border rounded bg-gray-50 text-xs text-gray-600 overflow-auto">
+                        <pre>{{ resultado.texto }}</pre>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <strong>Dados Completos (JSON):</strong>
-                    <div class="json-viewer mt-2">
-                        <pre id="jsonData"></pre>
-                    </div>
-                </div>
+                {% endif %}
             </div>
+            {% endif %}
         </div>
     </div>
-
     <script>
-        const API_BASE_URL = window.location.hostname === 'localhost' 
-            ? 'http://localhost:5000' 
-            : 'SUA_URL_DA_API_AQUI';
+        const fileInput = document.getElementById('file-upload');
+        const fileNameDisplay = document.getElementById('file-name');
+        const submitBtn = document.getElementById('submit-btn');
 
-        // Envio de PDF
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fileInput = document.getElementById('pdfFile');
-            const statusDiv = document.getElementById('uploadStatus');
-            
-            if (!fileInput.files.length) {
-                statusDiv.innerHTML = '<div class="alert alert-warning">Selecione um arquivo PDF</div>';
-                return;
-            }
-
-            const file = fileInput.files[0];
-            const formData = new FormData();
-            formData.append('arquivo', file);
-
-            statusDiv.innerHTML = '<div class="alert alert-info">Enviando e analisando PDF...</div>';
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/analisar-pdf`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    statusDiv.innerHTML = '<div class="alert alert-success">Análise concluída com sucesso!</div>';
-                    displayResults(data.analise);
-                } else {
-                    statusDiv.innerHTML = `<div class="alert alert-danger">Erro: ${data.erro || 'Erro desconhecido'}</div>`;
-                }
-            } catch (error) {
-                statusDiv.innerHTML = `<div class="alert alert-danger">Falha na conexão: ${error.message}</div>`;
-            }
-        });
-
-        // Consulta por hash
-        document.getElementById('searchForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const hashInput = document.getElementById('hashInput').value.trim();
-            const statusDiv = document.getElementById('searchStatus');
-            
-            if (!hashInput) {
-                statusDiv.innerHTML = '<div class="alert alert-warning">Digite um hash válido</div>';
-                return;
-            }
-
-            statusDiv.innerHTML = '<div class="alert alert-info">Buscando análise...</div>';
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/analise/${hashInput}`);
-                const data = await response.json();
-
-                if (response.ok) {
-                    statusDiv.innerHTML = '<div class="alert alert-success">Análise encontrada!</div>';
-                    displayResults(data);
-                } else {
-                    statusDiv.innerHTML = `<div class="alert alert-danger">${data.erro || 'Análise não encontrada'}</div>`;
-                }
-            } catch (error) {
-                statusDiv.innerHTML = `<div class="alert alert-danger">Falha na conexão: ${error.message}</div>`;
-            }
-        });
-
-        // Exibe os resultados
-        function displayResults(analysis) {
-            document.getElementById('resultado').style.display = 'block';
-            
-            // Status (com cor)
-            const statusElement = document.getElementById('status');
-            statusElement.textContent = analysis.status;
-            statusElement.className = analysis.status === 'confiavel' ? 'fw-bold status-confiavel' : 'fw-bold status-suspeito';
-            
-            // Demais campos
-            document.getElementById('hash').textContent = analysis.hash_sha256;
-            document.getElementById('data').textContent = new Date(analysis.created_at).toLocaleString();
-            document.getElementById('texto').textContent = analysis.texto_extraido || '(Nenhum texto extraído)';
-            
-            // Erros detectados
-            const errosList = document.getElementById('erros');
-            errosList.innerHTML = '';
-            
-            if (analysis.erros_detectados && analysis.erros_detectados.length > 0) {
-                analysis.erros_detectados.forEach(erro => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item list-group-item-danger';
-                    li.textContent = `${erro.codigo}: ${erro.mensagem}`;
-                    errosList.appendChild(li);
-                });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                fileNameDisplay.textContent = fileInput.files[0].name;
+                submitBtn.classList.remove('hidden');
             } else {
-                const li = document.createElement('li');
-                li.className = 'list-group-item list-group-item-success';
-                li.textContent = 'Nenhum erro detectado';
-                errosList.appendChild(li);
+                fileNameDisplay.textContent = '';
+                submitBtn.classList.add('hidden');
             }
-            
-            // JSON completo (para debug)
-            document.getElementById('jsonData').textContent = JSON.stringify(analysis, null, 2);
-        }
+        });
     </script>
 </body>
 </html>
