@@ -4,26 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Prefeitura de Apodi/RN - Sistema de Integridade Documental</title>
-    <meta name="description" content="Sistema de gestão documental com verificação de integridade da Prefeitura de Apodi/RN">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --primary: #1E8A57; /* Verde principal da Prefeitura de Apodi */
-            --secondary: #0F4A2D; /* Verde mais escuro para gradientes */
-        }
-        body { font-family: 'Inter', system-ui, sans-serif; color: #334155; }
-        .gradient-bg { background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%); }
-        .card { transition: all 0.3s; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
-        .card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
-        .nav-link { transition: all 0.3s ease; padding: 0.5rem 1rem; border-radius: 6px; }
-        .nav-link:hover, .nav-link:focus { background-color: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
-        .btn { transition: all 0.3s; border-radius: 8px; font-weight: 500; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .divider { height: 3px; width: 80px; background: var(--primary); margin: 1rem auto; border-radius: 3px; }
-        .document-hash { font-family: 'Fira Code', monospace; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px dashed #cbd5e1; }
-    </style>
-</head>
+    </head>
 <body class="bg-gray-50 min-h-screen">
     <header class="gradient-bg text-white sticky top-0 z-50">
         <div class="container mx-auto px-4 py-3">
@@ -40,8 +21,7 @@
                     <a href="/" class="nav-link"><i class="fas fa-home mr-1"></i> Início</a>
                     <a href="/transparencia" class="nav-link"><i class="fas fa-search mr-1"></i> Transparência</a>
                     <a href="/verificador" class="nav-link"><i class="fas fa-shield-alt mr-1"></i> Verificador</a>
-                    <a href="#contact" class="nav-link"><i class="fas fa-envelope mr-1"></i> Contato</a>
-                    <a href="/login" class="btn bg-white text-[var(--primary)] font-medium px-5 py-2.5 ml-2">
+                    <a href="/login" class="btn bg-white text-white/10 font-medium px-5 py-2.5 ml-2">
                         <i class="fas fa-sign-in-alt mr-2"></i> Acessar
                     </a>
                 </nav>
@@ -59,34 +39,13 @@
                          <a href="/verificador" class="btn bg-white text-[var(--primary)] font-medium py-3 px-8 rounded-lg text-lg">
                             <i class="fas fa-shield-alt mr-2"></i> Acessar Ferramenta
                         </a>
-                        <a href="/transparencia" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20">
+                        <a href="/transparencia" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg">
                             <i class="fas fa-search mr-2"></i> Ver Transparência
                         </a>
                     </div>
                 </div>
             </div>
         </section>
-
-        <section class="py-20 bg-gray-50">
-            </section>
-
-        <section id="contact" class="py-20 bg-white">
-            </section>
-    </main>
-
-    <footer class="bg-gray-800 text-gray-300 py-8">
-        </footer>
-
-    <script>
-        // Script para scroll suave (INTOCADO)
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
-                });
-            });
-        });
-    </script>
-</body>
+        </main>
+    </body>
 </html>
