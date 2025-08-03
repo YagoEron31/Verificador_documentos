@@ -1,33 +1,32 @@
-from flask import Flask, request, jsonify, send_from_directory, render_template
+from flask import Flask, request, jsonify, render_template
 import hashlib
 import requests
 import os
 from datetime import datetime
 import psycopg2
 from werkzeug.utils import secure_filename
+from psycopg2 import OperationalError
+
+app = Flask(__name__)
 
 # Configurações
-OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')  # já está no Render
-UPLOAD_FOLDER = 'uploads'
-BUCKET_NAME = 'armazenamento'
+app.config['UPLOAD_FOLDER'] = 'uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Supabase
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+BUCKET_NAME = 'armazenamento'
 
-# PostgreSQL
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT", 5432)
+# PostgreSQL (usando Supabase)
+DB_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME')}"
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Cria pasta se não existir
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
+def get_db_connection():
+    try:
+        return psycopg2.connect(DB_URL)
+    except OperationalError as e:
+        print(f"Erro ao conectar ao banco de dados: {e}")
+        raise
 
 def calcular_hash_sha256(file_path):
     sha256 = hashlib.sha256()
@@ -36,103 +35,58 @@ def calcular_hash_sha256(file_path):
             sha256.update(chunk)
     return sha256.hexdigest()
 
-
 def salvar_no_storage(nome_arquivo, file_path):
-    import requests
-
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
     }
-
     with open(file_path, 'rb') as file_data:
         response = requests.post(
             f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{nome_arquivo}",
             headers=headers,
             files={"file": (nome_arquivo, file_data)}
         )
-
     if response.status_code not in [200, 201]:
         raise Exception(f"Erro ao salvar no Supabase Storage: {response.text}")
-
     return f"{BUCKET_NAME}/{nome_arquivo}"
 
-
 def extrair_texto_ocr(file_path):
-    url = 'https://api.ocr.space/parse/image'
-    with open(file_path, 'rb') as f:
+    try:
         response = requests.post(
-            url,
-            files={'file': f},
-            data={
-                'apikey': OCR_SPACE_API_KEY,
-                'language': 'por'
-            }
+            'https://api.ocr.space/parse/image',
+            files={'file': open(file_path, 'rb')},
+            data={'apikey': os.getenv('OCR_SPACE_API_KEY'), 'language': 'por'}
         )
-    resultado = response.json()
-    if not resultado['IsErroredOnProcessing']:
-        texto_extraido = resultado['ParsedResults'][0]['ParsedText']
-        return texto_extraido.strip(), None
-    else:
-        return "", resultado.get("ErrorMessage")
-
+        resultado = response.json()
+        if not resultado.get('IsErroredOnProcessing', True):
+            return resultado['ParsedResults'][0]['ParsedText'].strip(), None
+        return "", resultado.get("ErrorMessage", "Erro desconhecido no OCR")
+    except Exception as e:
+        return "", str(e)
 
 def inserir_documento(hash_sha256, nome_arquivo, caminho_storage):
     try:
-        conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            host=DB_HOST,
-            port=DB_PORT
-        )
+        conn = get_db_connection()
         cursor = conn.cursor()
-
         cursor.execute("SELECT id FROM documentos_oficiais WHERE hash_sha256 = %s", (hash_sha256,))
         if cursor.fetchone():
-            return False  # Já existe
-
+            return False
         cursor.execute("""
             INSERT INTO documentos_oficiais (nome_arquivo, caminho_storage, hash_sha256, created_at)
             VALUES (%s, %s, %s, %s)
         """, (nome_arquivo, caminho_storage, hash_sha256, datetime.now()))
-
         conn.commit()
-        cursor.close()
-        conn.close()
         return True
     except Exception as e:
         print(f"Erro ao inserir documento: {e}")
         return False
-
-
-def inserir_analise(hash_sha256, texto_extraido, status, erros, caminho_storage):
-    try:
-        conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            host=DB_HOST,
-            port=DB_PORT
-        )
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT INTO analises (hash_sha256, texto_extraido, status, erros_detectados, caminho_storage, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (hash_sha256, texto_extraido, status, erros, caminho_storage, datetime.now()))
-
-        conn.commit()
+    finally:
         cursor.close()
         conn.close()
-    except Exception as e:
-        print(f"Erro ao inserir análise: {e}")
-
 
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -140,32 +94,21 @@ def upload_file():
         return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
 
     file = request.files['file']
-    if file.filename == '':
+    if not file or file.filename == '':
         return jsonify({'erro': 'Nome de arquivo inválido'}), 400
 
-    filename = secure_filename(file.filename)
-    local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(local_path)
-
-    hash_sha256 = calcular_hash_sha256(local_path)
-
-    # Nome novo com hash para evitar duplicatas
-    filename_com_hash = f"{hash_sha256}_{filename}"
-
     try:
-        # Salvar no storage
-        caminho_storage = salvar_no_storage(filename_com_hash, local_path)
+        filename = secure_filename(file.filename)
+        local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(local_path)
+        hash_sha256 = calcular_hash_sha256(local_path)
+        filename_com_hash = f"{hash_sha256}_{filename}"
 
-        # Salvar no banco se não existir
+        caminho_storage = salvar_no_storage(filename_com_hash, local_path)
         novo = inserir_documento(hash_sha256, filename, caminho_storage)
 
-        # OCR
         texto_extraido, erro_ocr = extrair_texto_ocr(local_path)
-
         status = "sucesso" if not erro_ocr else "falha"
-        erros = None if not erro_ocr else str(erro_ocr)
-
-        inserir_analise(hash_sha256, texto_extraido, status, erros, caminho_storage)
 
         return jsonify({
             "status": status,
@@ -175,10 +118,11 @@ def upload_file():
             "erro_ocr": erro_ocr,
             "caminho_storage": caminho_storage
         })
-
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
-
+    finally:
+        if 'local_path' in locals() and os.path.exists(local_path):
+            os.remove(local_path)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=os.getenv('FLASK_DEBUG', 'False') == 'True')
