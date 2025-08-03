@@ -1,19 +1,14 @@
-from flask import Flask, request, jsonify, send_from_directory, render_template
+from flask import Flask, request, jsonify, render_template
 import hashlib
-import requests
 import os
 from datetime import datetime
 import psycopg2
 from werkzeug.utils import secure_filename
+import requests
 
 # Configurações
-OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')  # já está no Render
+OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')  # no Render
 UPLOAD_FOLDER = 'uploads'
-BUCKET_NAME = 'armazenamento'
-
-# Supabase
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
 # PostgreSQL
 DB_NAME = os.getenv("DB_NAME")
@@ -24,8 +19,6 @@ DB_PORT = os.getenv("DB_PORT", 5432)
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Cria pasta se não existir
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
@@ -35,27 +28,6 @@ def calcular_hash_sha256(file_path):
         while chunk := f.read(4096):
             sha256.update(chunk)
     return sha256.hexdigest()
-
-
-def salvar_no_storage(nome_arquivo, file_path):
-    import requests
-
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-    }
-
-    with open(file_path, 'rb') as file_data:
-        response = requests.post(
-            f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{nome_arquivo}",
-            headers=headers,
-            files={"file": (nome_arquivo, file_data)}
-        )
-
-    if response.status_code not in [200, 201]:
-        raise Exception(f"Erro ao salvar no Supabase Storage: {response.text}")
-
-    return f"{BUCKET_NAME}/{nome_arquivo}"
 
 
 def extrair_texto_ocr(file_path):
@@ -77,7 +49,23 @@ def extrair_texto_ocr(file_path):
         return "", resultado.get("ErrorMessage")
 
 
-def inserir_documento(hash_sha256, nome_arquivo, caminho_storage):
+def documento_ja_existe(hash_sha256):
+    conn = psycopg2.connect(
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        port=DB_PORT
+    )
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM documentos_oficiais WHERE hash_sha256 = %s", (hash_sha256,))
+    existe = cursor.fetchone() is not None
+    cursor.close()
+    conn.close()
+    return existe
+
+
+def inserir_documento(hash_sha256, nome_arquivo, texto_extraido, status, erros):
     try:
         conn = psycopg2.connect(
             dbname=DB_NAME,
@@ -87,15 +75,11 @@ def inserir_documento(hash_sha256, nome_arquivo, caminho_storage):
             port=DB_PORT
         )
         cursor = conn.cursor()
-
-        cursor.execute("SELECT id FROM documentos_oficiais WHERE hash_sha256 = %s", (hash_sha256,))
-        if cursor.fetchone():
-            return False  # Já existe
-
         cursor.execute("""
-            INSERT INTO documentos_oficiais (nome_arquivo, caminho_storage, hash_sha256, created_at)
-            VALUES (%s, %s, %s, %s)
-        """, (nome_arquivo, caminho_storage, hash_sha256, datetime.now()))
+            INSERT INTO documentos_oficiais 
+            (nome_arquivo, hash_sha256, texto_extraido, status, erros_detectados, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (nome_arquivo, hash_sha256, texto_extraido, status, erros, datetime.now()))
 
         conn.commit()
         cursor.close()
@@ -104,29 +88,6 @@ def inserir_documento(hash_sha256, nome_arquivo, caminho_storage):
     except Exception as e:
         print(f"Erro ao inserir documento: {e}")
         return False
-
-
-def inserir_analise(hash_sha256, texto_extraido, status, erros, caminho_storage):
-    try:
-        conn = psycopg2.connect(
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            host=DB_HOST,
-            port=DB_PORT
-        )
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT INTO analises (hash_sha256, texto_extraido, status, erros_detectados, caminho_storage, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (hash_sha256, texto_extraido, status, erros, caminho_storage, datetime.now()))
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-    except Exception as e:
-        print(f"Erro ao inserir análise: {e}")
 
 
 @app.route('/')
@@ -149,35 +110,28 @@ def upload_file():
 
     hash_sha256 = calcular_hash_sha256(local_path)
 
-    # Nome novo com hash para evitar duplicatas
-    filename_com_hash = f"{hash_sha256}_{filename}"
+    if documento_ja_existe(hash_sha256):
+        os.remove(local_path)
+        return jsonify({'erro': 'Documento já existe no banco de dados', 'hash': hash_sha256}), 409
 
-    try:
-        # Salvar no storage
-        caminho_storage = salvar_no_storage(filename_com_hash, local_path)
+    texto_extraido, erro_ocr = extrair_texto_ocr(local_path)
+    os.remove(local_path)  # Remove o arquivo local após extração
 
-        # Salvar no banco se não existir
-        novo = inserir_documento(hash_sha256, filename, caminho_storage)
+    status = "sucesso" if not erro_ocr else "falha"
+    erros = None if not erro_ocr else str(erro_ocr)
 
-        # OCR
-        texto_extraido, erro_ocr = extrair_texto_ocr(local_path)
+    sucesso = inserir_documento(hash_sha256, filename, texto_extraido, status, erros)
 
-        status = "sucesso" if not erro_ocr else "falha"
-        erros = None if not erro_ocr else str(erro_ocr)
+    if not sucesso:
+        return jsonify({"erro": "Erro ao salvar no banco de dados"}), 500
 
-        inserir_analise(hash_sha256, texto_extraido, status, erros, caminho_storage)
-
-        return jsonify({
-            "status": status,
-            "hash": hash_sha256,
-            "nome_arquivo": filename,
-            "texto_extraido": texto_extraido,
-            "erro_ocr": erro_ocr,
-            "caminho_storage": caminho_storage
-        })
-
-    except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+    return jsonify({
+        "status": status,
+        "hash": hash_sha256,
+        "nome_arquivo": filename,
+        "texto_extraido": texto_extraido,
+        "erro_ocr": erro_ocr
+    })
 
 
 if __name__ == '__main__':
