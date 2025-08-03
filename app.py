@@ -1,198 +1,155 @@
-from flask import Flask, request, jsonify, render_template
-import hashlib
-import requests
 import os
-import json
+import hashlib
+import uuid
 from datetime import datetime
-# import psycopg2 # <-- REMOVIDO: Importação do psycopg2
+from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
+from supabase import create_client, Client
 from dotenv import load_dotenv
-import re
+import requests
 
-# Carrega as variáveis de ambiente do arquivo .env
+# Carrega variáveis de ambiente
 load_dotenv()
 
-# --- Configurações ---
-OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')
+# Configurações
+app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
-BUCKET_NAME = 'armazenamento' # Presumi este nome, ajuste se necessário
-DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
+ALLOWED_EXTENSIONS = {'pdf'}
 
-# Supabase (apenas para Storage, as chaves de DB serão ignoradas se não usadas)
+# Configura Supabase
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# PostgreSQL (Variáveis de ambiente mantidas, mas não serão usadas no código)
-# DB_NAME = os.getenv("DB_NAME")
-# DB_USER = os.getenv("DB_USER")
-# DB_PASSWORD = os.getenv("DB_PASSWORD")
-# DB_HOST = os.getenv("DB_HOST")
-# DB_PORT = os.getenv("DB_PORT", 5432)
+# Configura OCR.Space
+OCR_API_KEY = os.getenv('OCR_SPACE_API_KEY')
+OCR_ENDPOINT = 'https://api.ocr.space/parse/image'
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Verifica se a extensão do arquivo é permitida
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# =================================================================================
-# --- NOSSAS FUNÇÕES DE ANÁLISE E NOTIFICAÇÃO ---
-# =================================================================================
-
-def analisar_texto_completo(texto):
-    """Executa todas as nossas regras de verificação no texto extraído."""
-    erros_detectados = []
-    texto_em_minusculo = texto.lower()
-
-    PALAVRAS_SUSPEITAS = ["dispensa de licitacao", "carater de urgencia", "pagamento retroativo", "inexigibilidade de licitacao"]
-    for palavra in PALAVRAS_SUSPEITAS:
-        if palavra in texto_em_minusculo:
-            erros_detectados.append(f"Alerta de Termo Sensível: A expressão '{palavra}' foi encontrada.")
-    
-    datas = re.findall(r"\d{2}/\d{2}/\d{4}", texto)
-    for data in datas:
-        try:
-            dia, mes, _ = map(int, data.split('/'))
-            if mes > 12 or dia > 31 or mes == 0 or dia == 0:
-                erros_detectados.append(f"Possível adulteração: A data '{data}' é inválida.")
-        except ValueError:
-            continue
-
-    status = "SUSPEITO" if erros_detectados else "SEGURO"
-    return {"status": status, "erros": erros_detectados}
-
-def enviar_alerta_discord(resultado_analise, nome_arquivo):
-    """Envia uma notificação formatada para o Discord via Webhook."""
-    if not DISCORD_WEBHOOK_URL:
-        print("URL do Webhook do Discord não configurada.")
-        return
-
-    embed = {
-        "title": f"🚨 Alerta: Documento Suspeito Detectado!",
-        "color": 15158332, # Vermelho
-        "fields": [
-            {"name": "Nome do Arquivo", "value": nome_arquivo, "inline": True},
-            {"name": "Status da Análise", "value": resultado_analise['status'], "inline": True},
-            {"name": "Hash do Conteúdo (SHA-256)", "value": f"`{resultado_analise['hash']}`"},
-            {"name": "Inconsistências Encontradas", "value": "\n".join([f"• {erro}" for erro in resultado_analise['erros']]) or "Nenhuma inconsistência específica listada."}
-        ],
-        "footer": {"text": "Análise concluída pelo Verificador Inteligente."}
-    }
-    data = {"content": "Um novo documento suspeito requer atenção imediata!", "embeds": [embed]}
-    
-    try:
-        response = requests.post(DISCORD_WEBHOOK_URL, data=json.dumps(data), headers={"Content-Type": "application/json"})
-        response.raise_for_status()
-        print("Notificação enviada ao Discord com sucesso.")
-    except Exception as e:
-        print(f"Erro ao enviar notificação para o Discord: {e}")
-
-# =================================================================================
-# --- SUAS FUNÇÕES ORIGINAIS DE INFRAESTRUTURA (sem DB) ---
-# =================================================================================
-
-def calcular_hash_sha256(file_path):
+# Gera hash SHA-256 do arquivo
+def generate_file_hash(filepath):
     sha256 = hashlib.sha256()
-    with open(file_path, 'rb') as f:
-        while chunk := f.read(4096):
+    with open(filepath, 'rb') as f:
+        while chunk := f.read(8192):
             sha256.update(chunk)
     return sha256.hexdigest()
 
-def salvar_no_storage(nome_arquivo, file_path):
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/octet-stream"
-    }
-    with open(file_path, 'rb') as file_data:
+# Extrai texto do PDF usando OCR.Space
+def extract_text_from_pdf(filepath):
+    with open(filepath, 'rb') as file:
         response = requests.post(
-            f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{nome_arquivo}",
-            headers=headers,
-            data=file_data
+            OCR_ENDPOINT,
+            files={'file': file},
+            data={
+                'apikey': OCR_API_KEY,
+                'language': 'por',
+                'isOverlayRequired': False,
+                'OCREngine': 2
+            }
         )
+    
     if response.status_code != 200:
-        raise Exception(f"Erro ao salvar no Supabase Storage: {response.text}")
-    return f"{BUCKET_NAME}/{nome_arquivo}"
+        raise Exception(f"Erro no OCR: {response.json().get('ErrorMessage', 'Erro desconhecido')}")
+    
+    parsed_data = response.json()
+    if parsed_data.get('IsErroredOnProcessing', False):
+        raise Exception(f"Erro no OCR: {parsed_data.get('ErrorMessage')}")
+    
+    parsed_text = parsed_data.get('ParsedResults', [{}])[0].get('ParsedText', '')
+    return parsed_text.strip()
 
-def extrair_texto_ocr(file_path):
-    url = 'https://api.ocr.space/parse/image'
-    with open(file_path, 'rb') as f:
-        response = requests.post(
-            url,
-            files={'file': f},
-            data={'apikey': OCR_SPACE_API_KEY, 'language': 'por'}
-        )
-    resultado = response.json()
-    if not resultado.get('IsErroredOnProcessing'):
-        return resultado['ParsedResults'][0]['ParsedText'].strip(), None
-    else:
-        return "", resultado.get("ErrorMessage")
-
-# REMOVIDO: get_db_connection
-# REMOVIDO: inserir_documento_e_analise
-
-# =================================================================================
-# --- ROTAS DA APLICAÇÃO ---
-# =================================================================================
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
+# Rota para upload e análise de PDF
+@app.route('/analisar-pdf', methods=['POST'])
+def upload_pdf():
+    if 'arquivo' not in request.files:
         return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
-
-    file = request.files['file']
+    
+    file = request.files['arquivo']
     if file.filename == '':
         return jsonify({'erro': 'Nome de arquivo inválido'}), 400
-
+    
+    if not allowed_file(file.filename):
+        return jsonify({'erro': 'Apenas arquivos PDF são permitidos'}), 400
+    
+    # Salva o arquivo temporariamente
     filename = secure_filename(file.filename)
-    local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(local_path)
-
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+    
     try:
-        # 1. Calcula o hash do ARQUIVO para propósitos de retorno e nome do storage
-        hash_arquivo = calcular_hash_sha256(local_path)
-
-        # 2. Salva o arquivo no Storage (Supabase)
-        filename_com_hash = f"{hash_arquivo}_{filename}"
-        caminho_storage = salvar_no_storage(filename_com_hash, local_path)
-
-        # 3. Extrai o texto com OCR
-        texto_extraido, erro_ocr = extrair_texto_ocr(local_path)
-        if erro_ocr:
-            raise Exception(f"Erro no OCR: {erro_ocr}")
-
-        # 4. Executa nossa análise completa no conteúdo
-        analise = analisar_texto_completo(texto_extraido)
+        # Gera hash do arquivo
+        file_hash = generate_file_hash(filepath)
         
-        # 5. Prepara o resultado final para o usuário
-        # O hash_conteudo é do texto, não do arquivo, se for preciso
-        hash_conteudo = hashlib.sha256(texto_extraido.encode('utf-8')).hexdigest()
-        resultado_final = {
-            "status": analise['status'],
-            "erros": analise['erros'],
-            "hash_arquivo": hash_arquivo, # Retornando o hash do arquivo original
-            "hash_conteudo_ocr": hash_conteudo, # Retornando o hash do conteúdo extraído
-            "nome_arquivo": filename,
-            "caminho_storage": caminho_storage, # Opcional: retornar o caminho no storage
-            "texto_extraido": texto_extraido
-        }
-
-        # 6. Se for suspeito, envia a notificação para o Discord
-        if resultado_final['status'] == 'SUSPEITO':
-            enviar_alerta_discord(resultado_final, filename)
+        # Verifica se já existe no banco de dados
+        existing_analysis = supabase.table('analises') \
+            .select('*') \
+            .eq('hash_sha256', file_hash) \
+            .execute()
         
-        return jsonify(resultado_final)
-
+        if existing_analysis.data:
+            os.remove(filepath)
+            return jsonify({
+                'mensagem': 'Arquivo já analisado anteriormente',
+                'analise': existing_analysis.data[0]
+            }), 200
+        
+        # Extrai texto do PDF
+        extracted_text = extract_text_from_pdf(filepath)
+        
+        # Define status de confiabilidade (simplificado)
+        status = 'confiavel'
+        erros_detectados = []
+        
+        if not extracted_text:
+            status = 'suspeito'
+            erros_detectados.append({'codigo': 'TEXTO_VAZIO', 'mensagem': 'Nenhum texto extraído'})
+        elif len(extracted_text) < 50:
+            status = 'suspeito'
+            erros_detectados.append({'codigo': 'TEXTO_CURTO', 'mensagem': 'Texto extraído muito pequeno'})
+        
+        # Insere no Supabase
+        new_analysis = supabase.table('analises') \
+            .insert({
+                'hash_sha256': file_hash,
+                'status': status,
+                'erros_detectados': erros_detectados,
+                'texto_extraido': extracted_text
+            }) \
+            .execute()
+        
+        os.remove(filepath)
+        return jsonify({
+            'mensagem': 'Análise concluída com sucesso',
+            'analise': new_analysis.data[0]
+        }), 200
+    
     except Exception as e:
-        print(f"Erro durante o upload/processamento: {e}", flush=True) 
-        return jsonify({"erro": str(e)}), 500
-    finally:
-        if os.path.exists(local_path):
-            os.remove(local_path)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({'erro': str(e)}), 500
 
-# Para uso em desenvolvimento local:
+# Rota para consultar análise por hash
+@app.route('/analise/<hash>', methods=['GET'])
+def get_analysis(hash):
+    try:
+        analysis = supabase.table('analises') \
+            .select('*') \
+            .eq('hash_sha256', hash) \
+            .execute()
+        
+        if not analysis.data:
+            return jsonify({'erro': 'Análise não encontrada'}), 404
+        
+        return jsonify(analysis.data[0]), 200
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+# Cria a pasta de uploads se não existir
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
 if __name__ == '__main__':
-    # Você pode definir a porta aqui se precisar
-    app.run(debug=True, port=5000)
+    app.run(debug=True)
