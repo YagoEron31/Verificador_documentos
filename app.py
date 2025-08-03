@@ -1,5 +1,5 @@
 import os
-import re # <-- Importação corrigida
+import re
 import hashlib
 import io
 import json
@@ -16,13 +16,12 @@ load_dotenv()
 OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL') # <-- Chave protegida
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = Flask(__name__)
 
 # =================================================================================
-# --- MÓDULO DE ANÁLISE E NOTIFICAÇÃO ---
+# --- MÓDULO DE ANÁLISE ---
 # =================================================================================
 
 def analisar_texto_completo(texto):
@@ -30,40 +29,53 @@ def analisar_texto_completo(texto):
     erros_detectados = []
     texto_em_minusculo = texto.lower()
 
-    # (Sua lógica de análise detalhada permanece aqui)
+    # --- Regra 1: Nepotismo (com lista de exceções) ---
+    PALAVRAS_INSTITUCIONAIS = [
+        'campus', 'instituto', 'secretaria', 'prefeitura', 'comissao', 'diretoria', 
+        'coordenacao', 'avaliacao', 'servicos', 'companhia', 'programa', 'nacional', 
+        'boletim', 'reitoria', 'grupo', 'trabalho', 'assistencia', 'estudantil'
+    ]
+    nomes_potenciais = re.findall(r"\b[A-Z][a-z]+(?: [A-Z][a-z]+)+\b", texto)
+    nomes_validos = [
+        nome for nome in nomes_potenciais 
+        if any(c.islower() for c in nome) and not any(palavra in nome.lower() for palavra in PALAVRAS_INSTITUCIONAIS)
+    ]
+    nomes_contados = {nome: nomes_validos.count(nome) for nome in set(nomes_validos)}
+    for nome, contagem in nomes_contados.items():
+        if contagem > 1:
+            erros_detectados.append(f"Possível nepotismo: O nome '{nome}' aparece {contagem} vezes.")
+
+    # --- Regra 2: Datas Inválidas ---
+    datas = re.findall(r"\d{2}/\d{2}/\d{4}", texto)
+    for data in datas:
+        try:
+            dia, mes, _ = map(int, data.split('/'))
+            if mes > 12 or dia > 31 or mes == 0 or dia == 0:
+                erros_detectados.append(f"Possível adulteração: A data '{data}' é inválida.")
+        except ValueError:
+            continue
+    
+    # --- Regra 3: Palavras-Chave Suspeitas ---
     PALAVRAS_SUSPEITAS = ["dispensa de licitacao", "carater de urgencia", "pagamento retroativo", "inexigibilidade de licitacao"]
     for palavra in PALAVRAS_SUSPEITAS:
         if palavra in texto_em_minusculo:
             erros_detectados.append(f"Alerta de Termo Sensível: A expressão '{palavra}' foi encontrada.")
-    
+
+    # --- Regra 4: Análise Estrutural ---
+    if not re.search(r"(of[íi]cio|processo|portaria)\s+n[ºo]", texto_em_minusculo):
+        erros_detectados.append("Alerta Estrutural: Não foi encontrado um número de documento oficial (Ofício, Processo, etc.).")
+
+    # --- Regra 5: Auditor de Dispensa de Licitação ---
+    LIMITE_DISPENSA_SERVICOS = 59906.02
+    if "dispensa de licitacao" in texto_em_minusculo:
+        valores_encontrados = re.findall(r"R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})", texto)
+        for valor_str in valores_encontrados:
+            valor_float = float(valor_str.replace('.', '').replace(',', '.'))
+            if valor_float > LIMITE_DISPENSA_SERVICOS:
+                erros_detectados.append(f"ALERTA GRAVE DE LICITAÇÃO: Valor de R$ {valor_str} em dispensa acima do limite legal de R$ {LIMITE_DISPENSA_SERVICOS:,.2f}.".replace(',','.'))
+
     status = "SUSPEITO" if erros_detectados else "SEGURO"
     return {"status": status, "erros": erros_detectados}
-
-def enviar_alerta_discord(resultado_analise):
-    """Envia uma notificação formatada para o Discord via Webhook."""
-    if not DISCORD_WEBHOOK_URL:
-        print("Webhook do Discord não configurado. Pulando notificação.")
-        return
-
-    embed = {
-        "title": f"🚨 Alerta: Documento Suspeito Detectado!",
-        "color": 15158332, # Vermelho
-        "fields": [
-            {"name": "Nome do Arquivo", "value": resultado_analise.get('nome_arquivo', 'N/A'), "inline": True},
-            {"name": "Status da Análise", "value": resultado_analise['status'], "inline": True},
-            {"name": "Hash do Conteúdo", "value": f"`{resultado_analise['hash_conteudo']}`"},
-            {"name": "Hash do Arquivo", "value": f"`{resultado_analise['hash_arquivo']}`"},
-            {"name": "Inconsistências Encontradas", "value": "\n".join([f"• {erro}" for erro in resultado_analise['erros']]) or "Nenhuma inconsistência específica listada."}
-        ]
-    }
-    data = {"content": "Um novo documento suspeito requer atenção imediata!", "embeds": [embed]}
-    
-    try:
-        response = requests.post(DISCORD_WEBHOOK_URL, data=json.dumps(data), headers={"Content-Type": "application/json"})
-        response.raise_for_status()
-        print("Notificação enviada ao Discord com sucesso.")
-    except Exception as e:
-        print(f"Erro ao enviar notificação para o Discord: {e}")
 
 def extrair_texto_ocr_space(file_bytes, filename):
     """Extrai texto de um arquivo usando a API do OCR.space."""
@@ -137,10 +149,6 @@ def index():
         }
         supabase.table('analises').insert(resultado_final).execute()
         print("Nova análise salva no Supabase.")
-
-        # 6. Se for suspeito, envia o alerta
-        if resultado_final['status'] == 'SUSPEITO':
-            enviar_alerta_discord(resultado_final)
         
         return render_template('index.html', resultado=resultado_final)
 
