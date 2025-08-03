@@ -18,7 +18,7 @@ SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 BUCKET_NAME = 'armazenamento'
 
-# PostgreSQL (usando Supabase)
+# Conexão PostgreSQL (via Supabase)
 DB_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME')}"
 
 def get_db_connection():
@@ -68,9 +68,6 @@ def inserir_documento(hash_sha256, nome_arquivo, caminho_storage):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM documentos_oficiais WHERE hash_sha256 = %s", (hash_sha256,))
-        if cursor.fetchone():
-            return False
         cursor.execute("""
             INSERT INTO documentos_oficiais (nome_arquivo, caminho_storage, hash_sha256, created_at)
             VALUES (%s, %s, %s, %s)
@@ -105,7 +102,7 @@ def upload_file():
         filename_com_hash = f"{hash_sha256}_{filename}"
 
         caminho_storage = salvar_no_storage(filename_com_hash, local_path)
-        novo = inserir_documento(hash_sha256, filename, caminho_storage)
+        inserir_documento(hash_sha256, filename, caminho_storage)
 
         texto_extraido, erro_ocr = extrair_texto_ocr(local_path)
         status = "sucesso" if not erro_ocr else "falha"
