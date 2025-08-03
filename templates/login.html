@@ -3,89 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acesso ao Sistema - Prefeitura de Apodi/RN</title>
-    <meta name="description" content="Acesso ao sistema integrado da Prefeitura de Apodi/RN">
+    <title>VeriHash - Acesso ao Portal</title>
+    <meta name="description" content="Acesso ao Portal de Transparência">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #1E8A57; /* Verde principal da Prefeitura de Apodi */
-            --secondary: #0F4A2D; /* Verde mais escuro para gradientes */
-            --success: #10b981;
-            --dark: #1e293b;
+            --primary: #1E8A57; /* Verde da Prefeitura de Apodi */
+            --secondary: #0F4A2D;
         }
-        
-        body {
-            font-family: 'Inter', system-ui, sans-serif;
-            line-height: 1.6;
-            color: #334155;
-        }
-        
-        .gradient-bg {
-            background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
-        }
-        
-        .card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e2e8f0;
-        }
-        
-        .input-field {
-            transition: all 0.3s ease;
-        }
-        
-        .input-field:focus {
-            box-shadow: 0 0 0 3px rgba(30, 138, 87, 0.3);
-            border-color: var(--primary);
-        }
-        
-        .spinner {
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .nav-link {
-            transition: all 0.3s ease;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-        }
-        
-        .nav-link:hover, .nav-link:focus {
-            background-color: rgba(255, 255, 255, 0.15);
-            transform: translateY(-2px);
-            outline: none;
-        }
-        
-        .btn {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 8px;
-            font-weight: 500;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        
-        .user-type-btn {
-            transition: all 0.2s ease;
-        }
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%); }
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .nav-link { transition: all 0.3s ease; padding: 0.5rem 1rem; border-radius: 6px; }
+        .nav-link:hover, .nav-link:focus { background-color: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
-    <!-- Header -->
-    <header class="gradient-bg text-white shadow-md">
+    <header class="gradient-bg text-white sticky top-0 z-50">
         <div class="container mx-auto px-4 py-3">
             <div class="flex flex-col md:flex-row justify-between items-center">
-                <a href="index.html" class="flex items-center mb-4 md:mb-0">
-                    <img src="https://www.apodi.rn.gov.br/storage/settings/October2021/oZqA8Yg630z9Q202gZkF.png" alt="Brasão da Prefeitura de Apodi" class="h-14 mr-3">
+                <a href="/" class="flex items-center mb-4 md:mb-0">
+                    <img src="/static/brasao.png" alt="Brasão da Prefeitura de Apodi" class="h-14 mr-3">
                     <div>
                         <h1 class="text-xl font-bold leading-tight">Prefeitura Municipal de Apodi</h1>
                         <p class="text-sm opacity-90">Estado do Rio Grande do Norte</p>
@@ -93,63 +33,36 @@
                 </a>
                 
                 <nav class="flex items-center gap-2">
-                    <a href="index.html" class="nav-link"><i class="fas fa-home mr-1"></i> Início</a>
-                    <a href="transparencia.html" class="nav-link"><i class="fas fa-search mr-1"></i> Transparência</a>
-                    <a href="verificador.html" class="nav-link"><i class="fas fa-shield-alt mr-1"></i> Verificador</a>
+                    <a href="/" class="nav-link"><i class="fas fa-home mr-1"></i> Início</a>
+                    <a href="/transparencia" class="nav-link"><i class="fas fa-search mr-1"></i> Transparência</a>
+                    <a href="/verificador" class="nav-link"><i class="fas fa-shield-alt mr-1"></i> Verificador</a>
                 </nav>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="flex items-center justify-center py-12 px-4">
         <div class="w-full max-w-md">
-            <div class="card overflow-hidden">
-                <!-- Header Card -->
-                <div class="bg-white p-6 text-center border-b-4 border-[var(--primary)]">
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="gradient-bg p-6 text-center">
                     <div class="flex justify-center mb-4">
-                        <div class="bg-gray-100 p-3 rounded-full">
+                        <div class="bg-white p-3 rounded-full shadow-lg">
                             <i class="fas fa-lock text-[var(--primary)] text-2xl"></i>
                         </div>
                     </div>
-                    <h1 class="text-2xl font-bold text-gray-800">Acesso ao Sistema</h1>
-                    <p class="text-gray-500 mt-2">Use suas credenciais para entrar</p>
+                    <h1 id="form-title" class="text-2xl font-bold text-white">Acesso ao Portal</h1>
+                    <p class="text-blue-100 mt-2">Use suas credenciais para continuar</p>
                 </div>
                 
-                <!-- Login Form -->
                 <div class="bg-white p-8">
-                    <form id="loginForm" class="space-y-6">
-                        <div class="text-center mb-2">
-                            <div class="inline-flex rounded-md shadow-sm" role="group">
-                                <button type="button" id="btnCidadao" class="user-type-btn px-4 py-2 text-sm font-medium rounded-l-lg border focus:z-10 focus:ring-2 focus:ring-[var(--primary)] border-[var(--primary)] bg-[var(--primary)] text-white">
-                                    <i class="fas fa-user mr-1"></i> Cidadão
-                                </button>
-                                <button type="button" id="btnServidor" class="user-type-btn px-4 py-2 text-sm font-medium rounded-r-lg border focus:z-10 focus:ring-2 focus:ring-[var(--primary)] border-gray-300 hover:bg-gray-50">
-                                    <i class="fas fa-user-tie mr-1"></i> Servidor
-                                </button>
-                            </div>
-                        </div>
-
-                        <div id="servidorFields" class="hidden">
-                            <div class="bg-green-50 p-3 rounded-md mb-4 text-sm text-green-800">
-                                <i class="fas fa-info-circle mr-1"></i> Servidores devem usar e-mail institucional (@apodi.rn.gov.br)
-                            </div>
-                        </div>
-
+                    <form id="authForm" class="space-y-6">
                         <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">E-mail ou CPF</label>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
                             <div class="relative">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i class="fas fa-envelope text-gray-400"></i>
                                 </div>
-                                <input 
-                                    id="email" 
-                                    name="email" 
-                                    type="text" 
-                                    class="input-field pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--primary)] py-2 border" 
-                                    placeholder="seu.email@exemplo.com"
-                                    required
-                                >
+                                <input id="email" name="email" type="email" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 border" placeholder="seu.email@exemplo.com" required>
                             </div>
                         </div>
                         
@@ -159,146 +72,80 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i class="fas fa-key text-gray-400"></i>
                                 </div>
-                                <input 
-                                    id="password" 
-                                    name="password" 
-                                    type="password" 
-                                    class="input-field pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--primary)] py-2 border" 
-                                    placeholder="••••••••"
-                                    required
-                                >
-                            </div>
-                        </div>
-                        
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <input 
-                                    id="remember" 
-                                    name="remember" 
-                                    type="checkbox" 
-                                    class="h-4 w-4 rounded border-gray-300 text-[var(--primary)] focus:ring-[var(--primary)]"
-                                >
-                                <label for="remember" class="ml-2 block text-sm text-gray-700">Lembrar-me</label>
-                            </div>
-                            
-                            <div class="text-sm">
-                                <a href="#" class="font-medium text-[var(--primary)] hover:underline">Esqueceu a senha?</a>
+                                <input id="password" name="password" type="password" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 border" placeholder="••••••••" required>
                             </div>
                         </div>
                         
                         <div>
-                            <button 
-                                type="submit" 
-                                id="loginButton"
-                                class="w-full btn flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary)] hover:bg-[var(--secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary)]"
-                            >
-                                <span id="loginText">Acessar</span>
-                                <span id="loginSpinner" class="spinner hidden ml-2">
-                                    <i class="fas fa-circle-notch"></i>
-                                </span>
+                            <button type="submit" id="submitButton" class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary)] hover:bg-[var(--secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-300">
+                                <span id="buttonText">Entrar</span>
+                                <span id="spinner" class="spinner hidden ml-2"><i class="fas fa-circle-notch"></i></span>
                             </button>
                         </div>
 
                         <div class="text-center text-sm mt-4">
-                            <p class="text-gray-600">
+                            <p id="toggle-text" class="text-gray-600">
                                 Não tem uma conta? 
-                                <a href="cadastro.html" class="font-medium text-[var(--primary)] hover:underline">
+                                <a href="#" id="toggle-link" class="font-medium text-blue-600 hover:text-blue-500">
                                     Cadastre-se aqui
                                 </a>
                             </p>
                         </div>
                     </form>
                     
-                    <div id="loginMessage" class="hidden mt-4 p-3 rounded text-sm"></div>
+                    <div id="message" class="hidden mt-4 p-3 rounded text-sm text-center"></div>
                 </div>
-            </div>
-            
-            <div class="mt-6 text-center">
-                <a href="index.html" class="text-sm text-gray-600 hover:text-[var(--primary)] hover:underline">
-                    <i class="fas fa-arrow-left mr-1"></i> Voltar para a página inicial
-                </a>
             </div>
         </div>
     </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnCidadao = document.getElementById('btnCidadao');
-            const btnServidor = document.getElementById('btnServidor');
-            const servidorFields = document.getElementById('servidorFields');
-            const loginForm = document.getElementById('loginForm');
-            const loginButton = document.getElementById('loginButton');
-            const loginText = document.getElementById('loginText');
-            const loginSpinner = document.getElementById('loginSpinner');
-            const loginMessage = document.getElementById('loginMessage');
+        // Seu JavaScript de login/cadastro que já fizemos antes vai aqui
+        // Ele já está configurado para funcionar com o formulário acima
+        const form = document.getElementById('authForm');
+        const formTitle = document.getElementById('form-title');
+        const buttonText = document.getElementById('buttonText');
+        const submitButton = document.getElementById('submitButton');
+        const spinner = document.getElementById('spinner');
+        const message = document.getElementById('message');
+        const toggleLink = document.getElementById('toggle-link');
 
-            function toggleUserType(isServidor) {
-                const primaryColor = '#1E8A57'; // Cor primária da prefeitura
-                if (isServidor) {
-                    btnServidor.style.backgroundColor = primaryColor;
-                    btnServidor.style.borderColor = primaryColor;
-                    btnServidor.classList.add('text-white');
-                    btnServidor.classList.remove('hover:bg-gray-50');
-                    
-                    btnCidadao.style.backgroundColor = 'transparent';
-                    btnCidadao.classList.remove('text-white');
-                    btnCidadao.classList.add('hover:bg-gray-50');
-                    
-                    servidorFields.classList.remove('hidden');
-                } else {
-                    btnCidadao.style.backgroundColor = primaryColor;
-                    btnCidadao.style.borderColor = primaryColor;
-                    btnCidadao.classList.add('text-white');
-                    btnCidadao.classList.remove('hover:bg-gray-50');
+        let isLoginMode = true;
 
-                    btnServidor.style.backgroundColor = 'transparent';
-                    btnServidor.classList.remove('text-white');
-                    btnServidor.classList.add('hover:bg-gray-50');
-
-                    servidorFields.classList.add('hidden');
-                }
-            }
-            
-            // Inicializa o botão Cidadão como ativo
-            toggleUserType(false);
-
-            btnCidadao.addEventListener('click', () => toggleUserType(false));
-            btnServidor.addEventListener('click', () => toggleUserType(true));
-
-            loginForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                
-                loginText.textContent = 'Acessando...';
-                loginSpinner.classList.remove('hidden');
-                loginButton.disabled = true;
-                loginMessage.classList.add('hidden');
-
-                // Simula uma chamada de API
-                setTimeout(() => {
-                    const email = document.getElementById('email').value;
-                    
-                    // Lógica de simulação de login
-                    if (email === 'servidor@apodi.rn.gov.br') {
-                        loginMessage.textContent = 'Login como servidor bem-sucedido! Redirecionando...';
-                        loginMessage.className = 'mt-4 p-3 rounded text-sm bg-green-100 text-green-800';
-                        // window.location.href = '/dashboard-servidor'; 
-                    } else if (email.includes('@')) {
-                        loginMessage.textContent = 'Login como cidadão bem-sucedido! Redirecionando...';
-                        loginMessage.className = 'mt-4 p-3 rounded text-sm bg-green-100 text-green-800';
-                        // window.location.href = '/dashboard-cidadao';
-                    } else {
-                        loginMessage.textContent = 'E-mail ou senha inválidos. Tente novamente.';
-                        loginMessage.className = 'mt-4 p-3 rounded text-sm bg-red-100 text-red-800';
-                    }
-                    
-                    loginMessage.classList.remove('hidden');
-                    loginText.textContent = 'Acessar';
-                    loginSpinner.classList.add('hidden');
-                    loginButton.disabled = false;
-
-                }, 1500);
-            });
+        toggleLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            isLoginMode = !isLoginMode;
+            updateFormMode();
         });
+
+        function updateFormMode() {
+            if (isLoginMode) {
+                formTitle.textContent = 'Acesso ao Portal';
+                buttonText.textContent = 'Entrar';
+                toggleText.innerHTML = 'Não tem uma conta? <a href="#" id="toggle-link" class="font-medium text-blue-600 hover:text-blue-500">Cadastre-se aqui</a>';
+            } else {
+                formTitle.textContent = 'Crie sua Conta';
+                buttonText.textContent = 'Cadastrar';
+                toggleText.innerHTML = 'Já tem uma conta? <a href="#" id="toggle-link" class="font-medium text-blue-600 hover:text-blue-500">Faça o login</a>';
+            }
+            document.getElementById('toggle-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                isLoginMode = !isLoginMode;
+                updateFormMode();
+            });
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = form.email.value;
+            const password = form.password.value;
+            const endpoint = isLoginMode ? '/handle_login' : '/signup'; // Usa a rota de API correta
+            // ... resto da sua lógica de fetch ...
+        });
+        
+        function showMessage(type, text) {
+            // ... sua função de mostrar mensagem ...
+        }
     </script>
 </body>
 </html>
