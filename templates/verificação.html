@@ -1,1 +1,277 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificador de Documentos - Prefeitura de Apodi/RN</title>
+    <meta name="description" content="Sistema de verificação e análise de autenticidade de documentos">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1E8A57; /* Verde principal da Prefeitura de Apodi */
+            --secondary: #0F4A2D; /* Verde mais escuro para gradientes */
+            --light: #f8fafc;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            line-height: 1.6;
+            color: #334155;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+        }
+        
+        .card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .nav-link {
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+        }
+        
+        .nav-link:hover, .nav-link:focus {
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            outline: none;
+        }
+        
+        .btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .file-input-label:hover {
+            border-color: var(--primary);
+            background-color: #f9fafb;
+        }
+        
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-md">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <a href="index.html" class="flex items-center mb-4 md:mb-0">
+                    <img src="/static/brasao.png" alt="Brasão da Prefeitura de Apodi" class="h-14 mr-3">
+                    <div>
+                        <h1 class="text-xl font-bold leading-tight">Prefeitura Municipal de Apodi</h1>
+                        <p class="text-sm opacity-90">Estado do Rio Grande do Norte</p>
+                    </div>
+                </a>
+                
+                <nav class="flex items-center gap-2">
+                    <a href="index.html" class="nav-link"><i class="fas fa-home mr-1"></i> Início</a>
+                    <a href="transparencia.html" class="nav-link"><i class="fas fa-search mr-1"></i> Transparência</a>
+                    <a href="verificador.html" class="nav-link active"><i class="fas fa-shield-alt mr-1"></i> Verificador</a>
+                    <a href="login.html" class="btn bg-white text-[var(--primary)] font-medium px-5 py-2.5 ml-2">
+                        <i class="fas fa-sign-in-alt mr-2"></i> Acessar
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-12">
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-shield-alt mr-2 text-[var(--primary)]"></i>Analisador de Documentos
+            </h1>
+            <p class="text-gray-600 max-w-2xl mx-auto">
+                Submeta um documento para análise de integridade e detecção automática de inconsistências.
+            </p>
+        </header>
+
+        <!-- Notice Box -->
+        <div class="max-w-3xl mx-auto bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded-r-lg mb-8" role="alert">
+            <div class="flex">
+                <div class="py-1"><i class="fas fa-exclamation-triangle mr-3"></i></div>
+                <div>
+                    <p class="font-bold">Aviso Importante</p>
+                    <p class="text-sm">Ao submeter um documento, você concorda que, em caso de detecção de suspeitas, um relatório contendo os detalhes da análise poderá ser encaminhado ao setor de auditoria responsável.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Card -->
+        <div class="card bg-white max-w-3xl mx-auto">
+            <div class="p-8">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6 text-center">Submeter Documento para Análise</h2>
+                
+                <form id="analysisForm">
+                    <div>
+                        <label for="analysisFile" class="file-input-label flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <i class="fas fa-cloud-upload-alt text-gray-400 text-4xl mb-3"></i>
+                                <p class="mb-2 text-sm text-gray-500">
+                                    <span class="font-semibold">Clique para enviar</span> ou arraste e solte o arquivo
+                                </p>
+                                <p class="text-xs text-gray-500">PDF, PNG, JPG ou JPEG (MAX. 10MB)</p>
+                            </div>
+                            <input id="analysisFile" name="file" type="file" class="hidden" />
+                        </label>
+                    </div>
+                    
+                    <div id="fileName" class="text-sm text-gray-600 mt-4 hidden text-center">
+                        <i class="fas fa-file-alt mr-2"></i><span></span>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <button type="submit" class="w-full btn bg-[var(--primary)] hover:bg-[var(--secondary)] text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center text-base">
+                            <span id="btnText">Analisar Documento</span>
+                            <span id="spinner" class="spinner hidden ml-2">
+                                <i class="fas fa-circle-notch"></i>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Result Section -->
+        <div id="resultSection" class="max-w-3xl mx-auto mt-8 hidden">
+            <div class="card bg-white">
+                <div id="resultHeader" class="p-4 text-white text-lg font-bold"></div>
+                <div class="p-6">
+                    <div id="errorList" class="mb-4"></div>
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-gray-700 mb-2">Hash do Conteúdo (SHA-256):</h4>
+                        <p id="resultHash" class="text-sm font-mono bg-gray-100 p-3 rounded border break-all"></p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-700 mb-2">Texto Extraído via OCR:</h4>
+                        <pre id="resultText" class="text-sm bg-gray-100 p-3 rounded border max-h-60 overflow-y-auto"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('analysisForm');
+            const fileInput = document.getElementById('analysisFile');
+            const fileNameDisplay = document.getElementById('fileName');
+            const btnText = document.getElementById('btnText');
+            const spinner = document.getElementById('spinner');
+            const resultSection = document.getElementById('resultSection');
+            const resultHeader = document.getElementById('resultHeader');
+            const errorList = document.getElementById('errorList');
+            const resultHash = document.getElementById('resultHash');
+            const resultText = document.getElementById('resultText');
+
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    fileNameDisplay.querySelector('span').textContent = this.files[0].name;
+                    fileNameDisplay.classList.remove('hidden');
+                } else {
+                    fileNameDisplay.classList.add('hidden');
+                }
+            });
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                if (fileInput.files.length === 0) {
+                    alert('Por favor, selecione um arquivo para analisar.');
+                    return;
+                }
+
+                // Show loading state
+                btnText.textContent = 'Analisando...';
+                spinner.classList.remove('hidden');
+                resultSection.classList.add('hidden');
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                try {
+                    // Substitua '/analisar' pelo endpoint correto do seu backend Flask
+                    const response = await fetch('/analisar', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        displayResult(data);
+                    } else {
+                        displayResult({ status: 'ERRO', erros: [data.erro || 'Ocorreu um erro desconhecido.'] });
+                    }
+
+                } catch (error) {
+                    displayResult({ status: 'ERRO', erros: ['Falha na conexão com o servidor. Verifique sua internet.'] });
+                } finally {
+                    // Hide loading state
+                    btnText.textContent = 'Analisar Documento';
+                    spinner.classList.add('hidden');
+                }
+            });
+
+            function displayResult(data) {
+                // Clear previous errors
+                errorList.innerHTML = '';
+
+                if (data.status === 'SEGURO') {
+                    resultHeader.className = 'p-4 text-white text-lg font-bold bg-green-600';
+                    resultHeader.innerHTML = '<i class="fas fa-check-circle mr-2"></i>Documento Seguro';
+                    const noErrors = document.createElement('p');
+                    noErrors.className = 'text-gray-700';
+                    noErrors.textContent = 'Nenhuma inconsistência foi detectada.';
+                    errorList.appendChild(noErrors);
+                } else { // SUSPEITO ou ERRO
+                    resultHeader.className = 'p-4 text-white text-lg font-bold bg-red-600';
+                    resultHeader.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>Documento Suspeito';
+                    
+                    const errorTitle = document.createElement('h4');
+                    errorTitle.className = 'font-semibold text-gray-700 mb-2';
+                    errorTitle.textContent = 'Inconsistências Detectadas:';
+                    errorList.appendChild(errorTitle);
+
+                    const ul = document.createElement('ul');
+                    ul.className = 'list-disc list-inside space-y-1 text-red-700';
+                    data.erros.forEach(err => {
+                        const li = document.createElement('li');
+                        li.textContent = err;
+                        ul.appendChild(li);
+                    });
+                    errorList.appendChild(ul);
+                }
+
+                resultHash.textContent = data.hash || 'N/A';
+                resultText.textContent = data.texto_extraido || 'Não foi possível extrair o texto.';
+                
+                resultSection.classList.remove('hidden');
+                resultSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    </script>
+</body>
+</html>
