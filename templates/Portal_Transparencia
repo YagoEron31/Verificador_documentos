@@ -1,1 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transparência - VeriHash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #1e40af;
+            --dark: #1e293b;
+            --light: #f8fafc;
+        }
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            line-height: 1.6;
+            color: #334155;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+        }
+        
+        .card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-link {
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+        }
+        
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
+            font-weight: 500;
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            background-color: var(--secondary);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .tab-btn {
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+        }
+        
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .tab-btn:not(.active):hover {
+            background-color: #e0e7ff;
+        }
+        
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .status-approved {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-rejected {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <div class="bg-white p-3 rounded-xl mr-3 shadow-md">
+                        <i class="fas fa-fingerprint text-[var(--primary)] text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">VeriHash</h1>
+                        <p class="text-sm opacity-90">Integridade documental garantida</p>
+                    </div>
+                </div>
+                
+                <nav class="flex items-center gap-2">
+                    <a href="/" class="nav-link"><i class="fas fa-home mr-2"></i> Início</a>
+                    <a href="/transparencia" class="nav-link"><i class="fas fa-search mr-2"></i> Transparência</a>
+                    <a href="#contact" class="nav-link"><i class="fas fa-envelope mr-2"></i> Contato</a>
+                    <a href="/verificador" class="btn px-5 py-2.5 ml-2">
+                        <i class="fas fa-shield-halved mr-2"></i> Verificador
+                    </a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Modal de Solicitação de Acesso -->
+    <div id="accessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-900">Solicitar Acesso</h3>
+                <button onclick="closeAccessModal()" class="text-gray-500 hover:text-gray-700">&times;</button>
+            </div>
+            <form id="accessForm" class="space-y-4">
+                <div>
+                    <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
+                    <input type="text" id="fullName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label for="reason" class="block text-sm font-medium text-gray-700 mb-1">Justificativa *</label>
+                    <textarea id="reason" rows="3" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeAccessModal()" class="btn-outline px-4 py-2">Cancelar</button>
+                    <button type="submit" class="btn px-6 py-2"><i class="fas fa-paper-plane mr-2"></i> Enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <main class="container mx-auto px-4 py-8">
+        <section class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Portal da Transparência</h1>
+            <p class="text-lg text-gray-600 mb-6">Acesso a documentos públicos e informações governamentais</p>
+            
+            <div class="flex flex-wrap justify-center gap-4 mb-8">
+                <button id="emendasBtn" class="tab-btn active"><i class="fas fa-file-invoice-dollar mr-2"></i> Emendas</button>
+                <button id="receitasBtn" class="tab-btn"><i class="fas fa-money-bill-wave mr-2"></i> Receitas</button>
+                <button id="despesasBtn" class="tab-btn"><i class="fas fa-hand-holding-usd mr-2"></i> Despesas</button>
+            </div>
+        </section>
+
+        <!-- Seção de Documentos - Emendas -->
+        <section id="emendasSection">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Emendas Parlamentares</h2>
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <!-- Documento 1 (Público) -->
+                <div class="card bg-white">
+                    <div class="p-6">
+                        <h3 class="font-bold text-lg text-gray-900">Emenda 001/2023</h3>
+                        <p class="text-sm text-gray-500 mb-4">Parlamentar: Dep. João Silva</p>
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm"><i class="far fa-eye mr-2"></i> Visualizar</button>
+                            <button class="btn flex-1 py-2 text-sm"><i class="fas fa-download mr-2"></i> Baixar</button>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <p class="text-xs text-gray-500 mb-1">Hash de Integridade (SHA-256):</p>
+                            <p class="text-xs font-mono text-gray-600 break-all">a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Documento 2 (Restrito) -->
+                <div class="card bg-white">
+                    <div class="p-6">
+                        <h3 class="font-bold text-lg text-gray-900">Emenda 045/2023</h3>
+                        <p class="text-sm text-gray-500 mb-4">Parlamentar: Dep. Maria Souza</p>
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm" disabled><i class="fas fa-lock mr-2"></i> Acesso Restrito</button>
+                            <button onclick="openAccessModal()" class="btn flex-1 py-2 text-sm"><i class="fas fa-file-alt mr-2"></i> Solicitar Acesso</button>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <p class="text-xs text-gray-500 mb-1">Hash de Integridade (SHA-256):</p>
+                            <p class="text-xs font-mono text-gray-600 break-all">f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Documento 3 (Público) -->
+                <div class="card bg-white">
+                    <div class="p-6">
+                        <h3 class="font-bold text-lg text-gray-900">Emenda 088/2024</h3>
+                        <p class="text-sm text-gray-500 mb-4">Parlamentar: Dep. Carlos Andrade</p>
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm"><i class="far fa-eye mr-2"></i> Visualizar</button>
+                            <button class="btn flex-1 py-2 text-sm"><i class="fas fa-download mr-2"></i> Baixar</button>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <p class="text-xs text-gray-500 mb-1">Hash de Integridade (SHA-256):</p>
+                            <p class="text-xs font-mono text-gray-600 break-all">7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Documento 4 (Restrito) -->
+                <div class="card bg-white">
+                    <div class="p-6">
+                        <h3 class="font-bold text-lg text-gray-900">Emenda 102/2024</h3>
+                        <p class="text-sm text-gray-500 mb-4">Parlamentar: Dep. Ana Lima</p>
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm" disabled><i class="fas fa-lock mr-2"></i> Acesso Restrito</button>
+                            <button onclick="openAccessModal()" class="btn flex-1 py-2 text-sm"><i class="fas fa-file-alt mr-2"></i> Solicitar Acesso</button>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <p class="text-xs text-gray-500 mb-1">Hash de Integridade (SHA-256):</p>
+                            <p class="text-xs font-mono text-gray-600 break-all">fedcba098765fedcba098765fedcba098765fedcba098765fedcba098765fedc</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção de Documentos - Receitas (oculta) -->
+        <section id="receitasSection" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Receitas do Executivo</h2>
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <!-- Conteúdo de exemplo para Receitas -->
+            </div>
+        </section>
+
+        <!-- Seção de Documentos - Despesas (oculta) -->
+        <section id="despesasSection" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Despesas do Executivo</h2>
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <!-- Conteúdo de exemplo para Despesas -->
+            </div>
+        </section>
+
+        <!-- Seção de Minhas Solicitações -->
+        <section class="mt-12">
+            <h2 class="text-2xl font-bold text-gray-900 mb-6">Minhas Solicitações</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg overflow-hidden">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <!-- Exemplo de Solicitação -->
+                        <tr>
+                            <td class="px-6 py-4">Emenda 045/2023</td>
+                            <td class="px-6 py-4"><span class="status-pill status-approved"><i class="fas fa-check-circle mr-1"></i> Aprovado</span></td>
+                            <td class="px-6 py-4"><a href="#" class="text-[var(--primary)] hover:underline">Baixar</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-gray-900 text-gray-300 py-12 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="grid md:grid-cols-3 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center mb-4">
+                        <div class="bg-[var(--primary)] p-2 rounded-lg mr-3">
+                            <i class="fas fa-fingerprint text-white"></i>
+                        </div>
+                        <span class="font-bold text-white text-lg">VeriHash</span>
+                    </div>
+                    <p>Solução inovadora para gestão documental com integridade garantida.</p>
+                </div>
+                
+                <div>
+                    <h4 class="text-white font-bold mb-4">Links Úteis</h4>
+                    <ul class="space-y-2">
+                        <li><a href="/transparencia" class="hover:text-white">Portal de Transparência</a></li>
+                        <li><a href="#" class="hover:text-white">Perguntas Frequentes</a></li>
+                        <li><a href="#" class="hover:text-white">Termos de Uso</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-white font-bold mb-4">Contato</h4>
+                    <ul class="space-y-3">
+                        <li class="flex items-center">
+                            <i class="fas fa-envelope mr-2 text-[var(--primary)]"></i>
+                            <a href="mailto:contato@verihash.com" class="hover:text-white">contato@verihash.com</a>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fab fa-whatsapp mr-2 text-[var(--primary)]"></i>
+                            <a href="#" class="hover:text-white">(84) 99999-9999</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 text-center text-sm">
+                <p>© 2025 VeriHash. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Funções para o modal de acesso
+        function openAccessModal() {
+            document.getElementById('accessModal').classList.remove('hidden');
+        }
+        function closeAccessModal() {
+            document.getElementById('accessModal').classList.add('hidden');
+        }
+        document.getElementById('accessForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Solicitação enviada com sucesso!');
+            closeAccessModal();
+        });
+
+        // Controle das abas de conteúdo
+        const tabs = ['emendas', 'receitas', 'despesas'];
+        tabs.forEach(tab => {
+            document.getElementById(`${tab}Btn`).addEventListener('click', function() {
+                tabs.forEach(t => {
+                    document.getElementById(`${t}Section`).classList.add('hidden');
+                    document.getElementById(`${t}Btn`).classList.remove('active');
+                });
+                document.getElementById(`${tab}Section`).classList.remove('hidden');
+                this.classList.add('active');
+            });
+        });
+
+        // Scroll suave para âncoras
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
 
