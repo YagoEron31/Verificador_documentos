@@ -1,215 +1,155 @@
-import os
-import re
-import hashlib
-import json
-from flask import Flask, request, render_template
 import requests
-from supabase import create_client, Client
-from dotenv import load_dotenv
+import os
+from datetime import datetime
+import psycopg2
+from werkzeug.utils import secure_filename
+from psycopg2 import OperationalError
 
-# --- Carregando as Variáveis de Ambiente ---
-# Garanta que você tem um arquivo .env com estas chaves
-load_dotenv()
-OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL") # << NOVA CHAVE NECESSÁRIA
-
-# --- Conexão com o Supabase ---
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# --- Configuração do Flask ---
 app = Flask(__name__)
 
-# =================================================================================
-# --- MÓDULO DE ANÁLISE (NOSSA INTELIGÊNCIA INTEGRADA) ---
-# =================================================================================
+# Configurações
+app.config['UPLOAD_FOLDER'] = 'uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-def analisar_texto_completo(texto):
-    """
-    Executa todas as nossas regras de verificação no texto extraído.
-    Retorna um dicionário com o status, a lista de erros e as palavras para realçar.
-    """
-    erros_detectados = []
-    palavras_para_realcar = set()
-    texto_em_minusculo = texto.lower()
+# Supabase
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+BUCKET_NAME = 'armazenamento'
 
-    # --- Regra 1: Nepotismo (com lista de exceções) ---
-    PALAVRAS_INSTITUCIONAIS = [
-        'campus', 'instituto', 'secretaria', 'prefeitura', 'comissao', 'diretoria', 
-        'coordenacao', 'avaliacao', 'servicos', 'companhia', 'programa', 'nacional', 
-        'boletim', 'reitoria', 'grupo', 'trabalho', 'assistencia', 'estudantil'
-    ]
-    nomes_potenciais = re.findall(r"\b[A-Z][a-z]+(?: [A-Z][a-z]+)+\b", texto)
-    nomes_validos = [
-        nome for nome in nomes_potenciais 
-        if any(c.islower() for c in nome) and not any(palavra in nome.lower() for palavra in PALAVRAS_INSTITUCIONAIS)
-    ]
-    nomes_contados = {nome: nomes_validos.count(nome) for nome in set(nomes_validos)}
-    for nome, contagem in nomes_contados.items():
-        if contagem > 1:
-            erro = f"Possível nepotismo: O nome '{nome}' aparece {contagem} vezes."
-            erros_detectados.append(erro)
-            palavras_para_realcar.add(nome)
+# Conexão PostgreSQL (via Supabase)
+DB_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME')}"
 
-    # --- Regra 2: Datas Inválidas ---
-    datas = re.findall(r"\d{2}/\d{2}/\d{4}", texto)
-    for data in datas:
-        try:
-            dia, mes, _ = map(int, data.split('/'))
-            if mes > 12 or dia > 31 or mes == 0 or dia == 0:
-                erros_detectados.append(f"Possível adulteração: A data '{data}' é inválida.")
-        except ValueError:
-            continue
-    
-    # --- Regra 3: Palavras-Chave Suspeitas ---
-    PALAVRAS_SUSPEITAS = ["dispensa de licitacao", "carater de urgencia", "pagamento retroativo", "inexigibilidade de licitacao"]
-    for palavra in PALAVRAS_SUSPEITAS:
-        if palavra in texto_em_minusculo:
-            erro = f"Alerta de Termo Sensível: A expressão '{palavra}' foi encontrada."
-            erros_detectados.append(erro)
-            palavras_para_realcar.add(palavra)
-
-    # --- Regra 4: Análise Estrutural ---
-    if not re.search(r"(of[íi]cio|processo|portaria)\s+n[ºo]", texto_em_minusculo):
-        erros_detectados.append("Alerta Estrutural: Não foi encontrado um número de documento oficial (Ofício, Processo, etc.).")
-
-    # --- Regra 5: Auditor de Dispensa de Licitação ---
-    LIMITE_DISPENSA_SERVICOS = 59906.02
-    if "dispensa de licitacao" in texto_em_minusculo:
-        valores_encontrados = re.findall(r"R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})", texto)
-        for valor_str in valores_encontrados:
-            valor_float = float(valor_str.replace('.', '').replace(',', '.'))
-            if valor_float > LIMITE_DISPENSA_SERVICOS:
-                erros_detectados.append(f"ALERTA GRAVE DE LICITAÇÃO: Valor de R$ {valor_str} em dispensa acima do limite legal de R$ {LIMITE_DISPENSA_SERVICOS:,.2f}.".replace(',','.'))
-
-    status = "SUSPEITO" if erros_detectados else "SEGURO"
-    return {"status": status, "erros": erros_detectados, "palavras_realcar": palavras_para_realcar}
-
-def enviar_alerta_discord(resultado):
-    """Envia uma notificação formatada para o Discord via Webhook."""
-    if not DISCORD_WEBHOOK_URL:
-        print("URL do Webhook do Discord não configurada.")
-        return
-
-    embed = {
-        "title": f"🚨 Alerta: Documento Suspeito Detectado!",
-        "color": 15158332, # Vermelho
-        "fields": [
-            {"name": "Status", "value": resultado['status'], "inline": True},
-            {"name": "Hash do Conteúdo", "value": f"`{resultado['hash']}`", "inline": True},
-            {"name": "Inconsistências Encontradas", "value": "\n".join([f"• {erro}" for erro in resultado['erros']])}
-        ],
-        "footer": {"text": "Análise concluída pelo Verificador Inteligente."}
-    }
-    data = {"content": "Um novo documento suspeito requer atenção imediata!", "embeds": [embed]}
-    
+def get_db_connection():
     try:
-        requests.post(DISCORD_WEBHOOK_URL, data=json.dumps(data), headers={"Content-Type": "application/json"})
+        return psycopg2.connect(DB_URL)
+    except OperationalError as e:
+        print(f"Erro ao conectar ao banco de dados: {e}")
+        raise
+
+def calcular_hash_sha256(file_path):
+    sha256 = hashlib.sha256()
+    with open(file_path, 'rb') as f:
+        while chunk := f.read(4096):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+def salvar_no_storage(nome_arquivo, file_path):
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+    }
+    with open(file_path, 'rb') as file_data:
+        response = requests.post(
+            f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{nome_arquivo}",
+            headers=headers,
+            files={"file": (nome_arquivo, file_data)}
+        )
+    if response.status_code not in [200, 201]:
+        raise Exception(f"Erro ao salvar no Supabase Storage: {response.text}")
+    return f"{BUCKET_NAME}/{nome_arquivo}"
+# Dicionário para armazenar os textos (em memória)
+documentos = {}
+
+def extrair_texto_ocr(file_path):
+try:
+@@ -59,27 +18,11 @@ def extrair_texto_ocr(file_path):
+)
+resultado = response.json()
+if not resultado.get('IsErroredOnProcessing', True):
+            return resultado['ParsedResults'][0]['ParsedText'].strip(), None
+        return "", resultado.get("ErrorMessage", "Erro desconhecido no OCR")
     except Exception as e:
-        print(f"Erro ao enviar notificação para o Discord: {e}")
+        return "", str(e)
 
-# =================================================================================
-# --- ROTAS DA APLICAÇÃO (SUA ESTRUTURA ORIGINAL) ---
-# =================================================================================
+def inserir_documento(hash_sha256, nome_arquivo, caminho_storage):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO documentos_oficiais (nome_arquivo, caminho_storage, hash_sha256, created_at)
+            VALUES (%s, %s, %s, %s)
+        """, (nome_arquivo, caminho_storage, hash_sha256, datetime.now()))
+        conn.commit()
+        return True
+            return resultado['ParsedResults'][0]['ParsedText'].strip()
+        return None
+except Exception as e:
+        print(f"Erro ao inserir documento: {e}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()
+        print(f"Erro no OCR: {e}")
+        return None
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    resultado_analise = None
-    consulta_resultado = None
-    erro_consulta = None
-    erro_upload = None
+@@ -88,44 +31,38 @@ def index():
+@app.route('/upload', methods=['POST'])
+def upload_file():
+if 'file' not in request.files:
+        return render_template('index.html', erro="Nenhum arquivo enviado")
+        return jsonify({"erro": "Nenhum arquivo enviado"}), 400
 
-    if request.method == 'POST':
-        action = request.form.get('action')
+file = request.files['file']
+if file.filename == '':
+        return render_template('index.html', erro="Nome de arquivo inválido")
+        return jsonify({"erro": "Nome de arquivo inválido"}), 400
 
-        # --- Ação de Consultar por Hash ---
-        if action == 'consultar':
-            consulta_hash = request.form.get('hash_consulta', '').strip()
-            if not consulta_hash:
-                erro_consulta = "Por favor, informe um hash para consulta."
-            else:
-                try:
-                    data, count = supabase.table('analises').select('*').eq('hash_sha256', consulta_hash).execute()
-                    if len(data[1]) > 0:
-                        consulta_resultado = data[1][0]
-                    else:
-                        erro_consulta = "Nenhum documento encontrado com este hash."
-                except Exception as e:
-                    erro_consulta = f"Erro ao consultar o banco de dados: {e}"
+    try:
+        # Salvar arquivo localmente
+        filename = secure_filename(file.filename)
+        local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(local_path)
 
-        # --- Ação de Cadastrar e Analisar Novo Documento ---
-        elif action == 'cadastrar':
-            if 'file' not in request.files or request.files['file'].filename == '':
-                erro_upload = "Nenhum arquivo selecionado para upload."
-            else:
-                file = request.files['file']
-                try:
-                    file_bytes = file.read()
-                    
-                    # 1. Extrai o texto via API
-                    texto_extraido = requests.post(
-                        "https://api.ocr.space/parse/image",
-                        headers={'apikey': OCR_SPACE_API_KEY},
-                        files={'file': (file.filename, file_bytes, file.content_type)},
-                        data={'language': 'por', 'OCREngine': 2}
-                    ).json()["ParsedResults"][0]["ParsedText"]
+        # Calcular hash e salvar no Supabase
+        hash_sha256 = calcular_hash_sha256(local_path)
+        filename_com_hash = f"{hash_sha256}_{filename}"
+        caminho_storage = salvar_no_storage(filename_com_hash, local_path)
+        inserir_documento(hash_sha256, filename, caminho_storage)
+    # Salvar temporariamente
+    file_path = f"temp_{file.filename}"
+    file.save(file_path)
 
-                    if not texto_extraido.strip():
-                        raise ValueError("Nenhum texto pôde ser extraído do documento.")
+        # Extrair texto com OCR
+        texto_extraido, erro_ocr = extrair_texto_ocr(local_path)
+    # Extrair texto
+    texto = extrair_texto_ocr(file_path)
+    os.remove(file_path)  # Limpar arquivo temporário
 
-                    hash_sha256 = hashlib.sha256(texto_extraido.encode('utf-8')).hexdigest()
+        # Montar resultado
+        resultado = {
+            "status": "sucesso" if not erro_ocr else "falha",
+            "hash": hash_sha256,
+            "texto_extraido": texto_extraido,
+            "erro_ocr": erro_ocr
+        }
+    if not texto:
+        return jsonify({"erro": "Falha ao extrair texto"}), 500
 
-                    # 2. Verifica se a análise já existe no banco
-                    data, count = supabase.table('analises').select('*').eq('hash_sha256', hash_sha256).execute()
+        return render_template('index.html', resultado=resultado)
+    # Gerar hash como ID
+    hash_id = hashlib.sha256(texto.encode()).hexdigest()
+    documentos[hash_id] = texto
 
-                    if len(data[1]) > 0:
-                        # Se já existe, apenas carrega o resultado salvo
-                        analise_salva = data[1][0]
-                        resultado_analise = {
-                            "status": analise_salva['status'],
-                            "erros": analise_salva['erros_detectados'],
-                            "hash": analise_salva['hash_sha256'],
-                            "texto": analise_salva['texto_extraido'],
-                            "texto_realcado": analise_salva['texto_extraido'] # Simplificação, poderia realçar aqui também
-                        }
-                    else:
-                        # 3. Se for novo, executa nossa análise completa
-                        analise = analisar_texto_completo(texto_extraido)
-                        
-                        resultado_analise = {
-                            "status": analise['status'],
-                            "erros": analise['erros'],
-                            "hash": hash_sha256,
-                            "texto": texto_extraido
-                        }
+    except Exception as e:
+        return render_template('index.html', erro=str(e))
+    return jsonify({
+        "hash_id": hash_id,
+        "texto": texto
+    })
 
-                        # 4. Realce de Evidências
-                        texto_realcado = texto_extraido
-                        for palavra in analise['palavras_realcar']:
-                            texto_realcado = re.sub(f"({re.escape(palavra)})", r"<mark>\1</mark>", texto_realcado, flags=re.IGNORECASE)
-                        resultado_analise['texto_realcado'] = texto_realcado
-
-                        # 5. Salva a nova análise no Supabase
-                        supabase.table('analises').insert({
-                            'hash_sha256': hash_sha256,
-                            'status': resultado_analise['status'],
-                            'erros_detectados': resultado_analise['erros'],
-                            'texto_extraido': texto_extraido
-                        }).execute()
-
-                        # 6. Se for suspeito, envia o alerta para o Discord
-                        if resultado_analise['status'] == 'SUSPEITO':
-                            enviar_alerta_discord(resultado_analise)
-
-                except Exception as e:
-                    erro_upload = f"Não foi possível processar o arquivo: {e}"
-
-    return render_template('index.html',
-                           resultado=resultado_analise,
-                           erro_upload=erro_upload,
-                           consulta_resultado=consulta_resultado,
-                           erro_consulta=erro_consulta)
+    finally:
+        # Limpar arquivo temporário
+        if 'local_path' in locals() and os.path.exists(local_path):
+            os.remove(local_path)
+@app.route('/documento/<hash_id>')
+def get_documento(hash_id):
+    texto = documentos.get(hash_id)
+    if texto:
+        return jsonify({"texto": texto})
+    return jsonify({"erro": "Documento não encontrado"}), 404
 
 if __name__ == '__main__':
+    app.run(debug=os.getenv('FLASK_DEBUG', 'False') == 'True')
     app.run(debug=True)
