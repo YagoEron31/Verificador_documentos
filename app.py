@@ -9,13 +9,14 @@ from supabase import create_client, Client
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente
+# Carrega variáveis de ambiente (útil para desenvolvimento local)
 load_dotenv()
 
-# --- Configurações e Conexões ---
-OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+# --- CHAVES E URLS INSERIDAS DIRETAMENTE NO CÓDIGO ---
+OCR_SPACE_API_KEY = "K81365576488957"
+SUPABASE_URL = "https://likiubglfkyoizobjrem.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpa2l1YmdsZmt5b2l6b2JqcmVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyMDA3NTgsImV4cCI6MjA2OTc3Njc1OH0.ynQy5J-4W_2oyiLa-8GbPmFe_gtGm2HAAeRqoPEXPEI"
+# -------------------------------------------------------------
 
 app = Flask(__name__)
 _supabase_client = None
@@ -41,8 +42,15 @@ def allowed_file(filename):
 
 def analisar_texto_completo(texto):
     """Executa todas as regras de verificação no texto extraído."""
-    # (Sua lógica de análise detalhada permanece aqui)
     erros_detectados = []
+    texto_em_minusculo = texto.lower()
+    
+    # (Sua lógica de análise detalhada permanece aqui)
+    PALAVRAS_SUSPEITAS = ["dispensa de licitação", "caráter de urgência"]
+    for palavra in PALAVRAS_SUSPEITAS:
+        if palavra in texto_em_minusculo:
+            erros_detectados.append(f"Alerta de Termo Sensível: '{palavra}'")
+    
     status = "SUSPEITO" if erros_detectados else "SEGURO"
     return {"status": status, "erros": erros_detectados}
 
@@ -74,10 +82,9 @@ def verificador_page():
     if request.method == 'GET':
         return render_template('verificação.html')
 
-    # Lógica de POST
     if 'file' not in request.files or request.files['file'].filename == '':
         return render_template('verificação.html', erro_upload="Nenhum arquivo selecionado.")
-    
+
     file = request.files['file']
     
     if not allowed_file(file.filename):
@@ -123,8 +130,7 @@ def verificador_page():
     except Exception as e:
         return render_template('verificação.html', resultado={"status": "ERRO", "erros": [f"Erro inesperado: {e}"]})
     
-# ... (outras rotas)
+# ... (outras rotas como /login, /transparencia, etc.) ...
 
 if __name__ == '__main__':
     app.run(debug=True)
-    
