@@ -9,65 +9,54 @@
     <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl space-y-6">
         <h1 class="text-2xl font-bold text-center text-blue-700">Verificador de Documentos Oficiais</h1>
 
-        <!-- Formulário de cadastro e análise -->
-        <form method="POST" enctype="multipart/form-data" class="space-y-4">
-            <input type="hidden" name="action" value="cadastrar">
-            <label class="block text-sm font-medium text-gray-700">Upload do Documento (PDF ou imagem):</label>
-            <input type="file" name="file" accept="application/pdf,image/*" class="border rounded p-2 w-full">
+        <!-- Formulário de upload -->
+        <form 
+            action="/upload" 
+            method="POST" 
+            enctype="multipart/form-data" 
+            class="space-y-4"
+        >
+            <label class="block text-sm font-medium text-gray-700">
+                Upload do Documento (PDF ou imagem):
+            </label>
+            <input 
+                type="file" 
+                name="file" 
+                accept="application/pdf,image/*" 
+                class="border rounded p-2 w-full"
+                required
+            >
 
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded w-full">Cadastrar e Analisar Documento</button>
+            <button 
+                type="submit" 
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded w-full"
+            >
+                Cadastrar e Analisar Documento
+            </button>
 
-            {% if erro_upload %}
-                <p class="text-red-600 font-medium mt-2">{{ erro_upload }}</p>
+            {% if erro %}
+                <p class="text-red-600 font-medium mt-2">{{ erro }}</p>
             {% endif %}
         </form>
 
-        <hr class="my-4">
-
-        <!-- Formulário de verificação por hash -->
-        <form method="POST" class="space-y-4">
-            <input type="hidden" name="action" value="consultar">
-            <label class="block text-sm font-medium text-gray-700">Consultar por Hash SHA256:</label>
-            <input type="text" name="hash_consulta" placeholder="Cole aqui o hash..." class="border rounded p-2 w-full">
-
-            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded w-full">Verificar Documento</button>
-
-            {% if erro_consulta %}
-                <p class="text-red-600 font-medium mt-2">{{ erro_consulta }}</p>
-            {% endif %}
-        </form>
-
-        <!-- Resultado de Análise ou Consulta -->
+        <!-- Resultado da Análise -->
         {% if resultado %}
             <div class="mt-6 p-4 border rounded bg-gray-50">
                 <h2 class="text-lg font-bold text-blue-700 mb-2">Resultado da Análise</h2>
                 <p><strong>Status:</strong> {{ resultado.status }}</p>
-                <p><strong>Hash:</strong> {{ resultado.hash }}</p>
-                <p class="mt-2"><strong>Erros/Alertas:</strong></p>
-                <ul class="list-disc list-inside text-red-600">
-                    {% for erro in resultado.erros %}
-                        <li>{{ erro }}</li>
-                    {% endfor %}
-                </ul>
+                <p><strong>Hash:</strong> <code class="text-sm">{{ resultado.hash }}</code></p>
+                
+                {% if resultado.erro_ocr %}
+                    <p class="mt-2 text-red-600">
+                        <strong>Erro no OCR:</strong> {{ resultado.erro_ocr }}
+                    </p>
+                {% endif %}
+
                 <details class="mt-4">
-                    <summary class="cursor-pointer text-sm text-blue-600">Ver texto extraído</summary>
-                    <pre class="bg-white p-2 border rounded text-sm mt-2 whitespace-pre-wrap">{{ resultado.texto }}</pre>
-                </details>
-            </div>
-        {% elif consulta_resultado %}
-            <div class="mt-6 p-4 border rounded bg-gray-50">
-                <h2 class="text-lg font-bold text-green-700 mb-2">Documento Encontrado</h2>
-                <p><strong>Status:</strong> {{ consulta_resultado.status }}</p>
-                <p><strong>Hash:</strong> {{ consulta_resultado.hash_sha256 }}</p>
-                <p class="mt-2"><strong>Erros/Alertas:</strong></p>
-                <ul class="list-disc list-inside text-red-600">
-                    {% for erro in consulta_resultado.erros_detectados %}
-                        <li>{{ erro }}</li>
-                    {% endfor %}
-                </ul>
-                <details class="mt-4">
-                    <summary class="cursor-pointer text-sm text-blue-600">Ver texto extraído</summary>
-                    <pre class="bg-white p-2 border rounded text-sm mt-2 whitespace-pre-wrap">{{ consulta_resultado.texto_extraido }}</pre>
+                    <summary class="cursor-pointer text-sm text-blue-600">
+                        Ver texto extraído
+                    </summary>
+                    <pre class="bg-white p-2 border rounded text-sm mt-2 whitespace-pre-wrap">{{ resultado.texto_extraido }}</pre>
                 </details>
             </div>
         {% endif %}
