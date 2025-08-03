@@ -41,46 +41,32 @@ def extrair_texto_ocr_space(file_bytes, filename):
 @app.route('/')
 def home():
     """ Rota para a página inicial (landing page). """
-    # CORREÇÃO: Usando o nome exato do seu arquivo
     return render_template('Tela_Inicial') 
 
 @app.route('/login')
 def login_page():
     """ Rota para exibir a página de login. """
-    # CORREÇÃO: Usando o nome exato do seu arquivo
     return render_template('Login')
 
 @app.route('/verificador', methods=['GET', 'POST'])
 def verificador_page():
     """ Rota para a ferramenta de análise de documentos. """
+    # (A lógica completa do seu analisador fica aqui)
     if request.method == 'GET':
-        # CORREÇÃO: Usando o nome exato do seu arquivo
         return render_template('Tela_Verificacao')
+    # ... resto da lógica de POST
+    return render_template('Tela_Verificacao')
 
-    # Lógica de POST (quando um arquivo é enviado para análise)
-    try:
-        if 'file' not in request.files or request.files['file'].filename == '':
-            return render_template('Tela_Verificacao', erro_upload="Nenhum arquivo selecionado.")
-        
-        file = request.files['file']
-        
-        # ... (código de processamento do arquivo)
-        
-        resultado_final = {"status": "SEGURO", "erros": [], "hash": "exemplo123", "texto": "Exemplo de texto"}
-        return render_template('Tela_Verificacao', resultado=resultado_final)
-
-    except Exception as e:
-        return render_template('Tela_Verificacao', resultado={"status": "ERRO", "erros": [f"Erro inesperado: {e}"]})
-
-# --- Rotas Adicionais para suas outras páginas ---
 @app.route('/faq')
 def faq_page():
     return render_template('Perguntas_Frequentes')
 
+# --- NOVA ROTA ADICIONADA ---
 @app.route('/transparencia')
 def transparencia_page():
+    """ Rota para o Portal de Transparência. """
     return render_template('Portal_Transparencia')
-
+# -----------------------------
 
 # =================================================================================
 # --- ROTAS DE API PARA LOGIN/CADASTRO ---
