@@ -1,87 +1,45 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Verificador de Documentos</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
-  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-  <style>
-    body {
-      background: linear-gradient(to right, #667eea, #764ba2);
-      color: white;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    .navbar {
-      background-color: rgba(0, 0, 0, 0.3);
-    }
-    .navbar-brand, .nav-link {
-      color: white !important;
-    }
-    .hero {
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      padding: 2rem;
-    }
-    .hero h1 {
-      font-size: 3rem;
-      font-weight: bold;
-    }
-    .hero p {
-      font-size: 1.25rem;
-      margin-top: 1rem;
-    }
-    .btn-custom {
-      margin-top: 2rem;
-      font-size: 1.2rem;
-    }
-  </style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Verificador de Documentos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  </head>
+  <body class="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+    <!-- Navbar -->
+    <nav class="flex items-center justify-between flex-wrap bg-black bg-opacity-30 p-6">
+      <div class="flex items-center flex-shrink-0 text-white mr-6">
+        <span class="font-semibold text-xl tracking-tight">Verificador</span>
+      </div>
+      <div class="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
+        <div class="text-sm lg:flex-grow">
+          <a href="transparencia.html" class="block mt-4 lg:inline-block lg:mt-0 text-white hover:text-gray-300 mr-4">
+            <i class="fas fa-search mr-1"></i> Transparência
+          </a>
+          <a href="/verificador" class="block mt-4 lg:inline-block lg:mt-0 text-white hover:text-gray-300 mr-4">
+            <i class="fas fa-upload mr-1"></i> Verificar Documento
+          </a>
+          <a href="/login" class="block mt-4 lg:inline-block lg:mt-0 text-white hover:text-gray-300">
+            <i class="fas fa-sign-in-alt mr-1"></i> Login
+          </a>
+        </div>
+      </div>
+    </nav>
 
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="/">Verificador</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-              data-bs-target="#navbarNav" aria-controls="navbarNav"
-              aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon text-white"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item">
-            <a href="transparencia.html" class="nav-link"><i class="fas fa-search me-1"></i> Transparência</a>
-          </li>
-          <li class="nav-item">
-            <a href="/verificador" class="nav-link"><i class="fas fa-upload me-1"></i> Verificar Documento</a>
-          </li>
-          <li class="nav-item">
-            <a href="/login" class="nav-link"><i class="fas fa-sign-in-alt me-1"></i> Login</a>
-          </li>
-        </ul>
+    <!-- Hero Section -->
+    <div class="flex flex-col items-center justify-center text-center h-screen px-4">
+      <h1 class="text-4xl md:text-6xl font-bold mb-4"><i class="fas fa-file-alt"></i> Verificador de Documentos</h1>
+      <p class="text-lg md:text-xl mb-8 max-w-2xl">Garanta a autenticidade de documentos utilizando tecnologia OCR e análise de conteúdo.</p>
+      <div class="flex flex-col md:flex-row gap-4">
+        <a href="/verificador" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20">
+          <i class="fas fa-upload mr-2"></i> Enviar Documento
+        </a>
+        <a href="transparencia.html" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20">
+          <i class="fas fa-search mr-2"></i> Ver Transparência
+        </a>
       </div>
     </div>
-  </nav>
-
-  <!-- Hero Section -->
-  <section class="hero">
-    <h1><i class="fas fa-file-alt"></i> Verificador de Documentos</h1>
-    <p>Garanta a autenticidade de documentos utilizando tecnologia OCR e análise de conteúdo.</p>
-    <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
-      <a href="/verificador" class="btn btn-light btn-lg btn-custom">
-        <i class="fas fa-upload me-2"></i> Enviar Documento
-      </a>
-      <a href="transparencia.html" class="btn btn-outline-light btn-lg btn-custom">
-        <i class="fas fa-search me-2"></i> Ver Transparência
-      </a>
-    </div>
-  </section>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+  </body>
 </html>
