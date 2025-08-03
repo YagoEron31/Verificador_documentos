@@ -88,36 +88,42 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
-        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
+        return render_template('index.html', erro="Nenhum arquivo enviado")
 
     file = request.files['file']
-    if not file or file.filename == '':
-        return jsonify({'erro': 'Nome de arquivo inválido'}), 400
+    if file.filename == '':
+        return render_template('index.html', erro="Nome de arquivo inválido")
 
     try:
+        # Salvar arquivo localmente
         filename = secure_filename(file.filename)
         local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(local_path)
+
+        # Calcular hash e salvar no Supabase
         hash_sha256 = calcular_hash_sha256(local_path)
         filename_com_hash = f"{hash_sha256}_{filename}"
-
         caminho_storage = salvar_no_storage(filename_com_hash, local_path)
         inserir_documento(hash_sha256, filename, caminho_storage)
 
+        # Extrair texto com OCR
         texto_extraido, erro_ocr = extrair_texto_ocr(local_path)
-        status = "sucesso" if not erro_ocr else "falha"
 
-        return jsonify({
-            "status": status,
+        # Montar resultado
+        resultado = {
+            "status": "sucesso" if not erro_ocr else "falha",
             "hash": hash_sha256,
-            "nome_arquivo": filename,
             "texto_extraido": texto_extraido,
-            "erro_ocr": erro_ocr,
-            "caminho_storage": caminho_storage
-        })
+            "erro_ocr": erro_ocr
+        }
+
+        return render_template('index.html', resultado=resultado)
+
     except Exception as e:
-        return jsonify({"erro": str(e)}), 500
+        return render_template('index.html', erro=str(e))
+
     finally:
+        # Limpar arquivo temporário
         if 'local_path' in locals() and os.path.exists(local_path):
             os.remove(local_path)
 
