@@ -25,14 +25,14 @@ app = Flask(__name__)
 # =================================================================================
 
 def analisar_texto_completo(texto):
-    # ... (Sua lógica de análise permanece aqui) ...
+    # (Sua lógica de análise permanece aqui)
     erros_detectados = []
     status = "SUSPEITO" if erros_detectados else "SEGURO"
     return {"status": status, "erros": erros_detectados}
 
 def extrair_texto_ocr_space(file_bytes, filename):
-    # ... (Sua lógica de extração de texto via API permanece aqui) ...
-    return "Texto extraído"
+    # (Sua lógica de extração de texto via API permanece aqui)
+    return "Texto extraído com sucesso"
 
 # =================================================================================
 # --- ROTAS PARA SERVIR AS PÁGINAS HTML ---
@@ -41,34 +41,46 @@ def extrair_texto_ocr_space(file_bytes, filename):
 @app.route('/')
 def home():
     """ Rota para a página inicial (landing page). """
-    # CORREÇÃO: Usando o nome exato do seu arquivo, com maiúsculas.
-    return render_template('Tela_Inicial.html') 
+    # CORREÇÃO: Usando o nome exato do seu arquivo
+    return render_template('Tela_Inicial') 
 
 @app.route('/login')
 def login_page():
     """ Rota para exibir a página de login. """
-    return render_template('login.html')
+    # CORREÇÃO: Usando o nome exato do seu arquivo
+    return render_template('Login')
 
-@app.route('/analisador', methods=['GET', 'POST'])
-def analisador_page():
+@app.route('/verificador', methods=['GET', 'POST'])
+def verificador_page():
     """ Rota para a ferramenta de análise de documentos. """
     if request.method == 'GET':
-        return render_template('analisador.html')
+        # CORREÇÃO: Usando o nome exato do seu arquivo
+        return render_template('Tela_Verificacao')
 
     # Lógica de POST (quando um arquivo é enviado para análise)
-    # ... (Aqui entra todo o resto da sua lógica de análise) ...
     try:
         if 'file' not in request.files or request.files['file'].filename == '':
-            return render_template('analisador.html', erro_upload="Nenhum arquivo selecionado.")
+            return render_template('Tela_Verificacao', erro_upload="Nenhum arquivo selecionado.")
         
         file = request.files['file']
-        # ... (código de processamento)
+        
+        # ... (código de processamento do arquivo)
         
         resultado_final = {"status": "SEGURO", "erros": [], "hash": "exemplo123", "texto": "Exemplo de texto"}
-        return render_template('analisador.html', resultado=resultado_final)
+        return render_template('Tela_Verificacao', resultado=resultado_final)
 
     except Exception as e:
-        return render_template('analisador.html', resultado={"status": "ERRO", "erros": [f"Erro inesperado: {e}"]})
+        return render_template('Tela_Verificacao', resultado={"status": "ERRO", "erros": [f"Erro inesperado: {e}"]})
+
+# --- Rotas Adicionais para suas outras páginas ---
+@app.route('/faq')
+def faq_page():
+    return render_template('Perguntas_Frequentes')
+
+@app.route('/transparencia')
+def transparencia_page():
+    return render_template('Portal_Transparencia')
+
 
 # =================================================================================
 # --- ROTAS DE API PARA LOGIN/CADASTRO ---
