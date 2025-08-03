@@ -1,71 +1,51 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prefeitura de Apodi/RN - Sistema de Integridade Documental</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
-    <style>
-        .gradient-bg {
-            /* GRADIENTE VERDE RESTAURADO */
-            background: linear-gradient(90deg, #15803d, #22c55e);
-        }
-        /* Ajuste para o botão "Acessar" que estava com texto branco em fundo branco */
-        a[href="/login"].btn {
-            background-color: #ffffff;
-            color: #15803d; /* Cor verde escura do gradiente */
-        }
-        a[href="/login"].btn:hover {
-            background-color: #f0fdf4; /* Um verde bem claro para o hover */
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Verificador de Documentos</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
+<body class="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
 
-<body class="bg-gray-50 min-h-screen">
-    <header class="gradient-bg text-white sticky top-0 z-50">
-        <div class="container mx-auto px-4 py-3">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <a href="/" class="flex items-center mb-4 md:mb-0">
-                    <img src="/static/brasao.png" alt="Brasão da Prefeitura de Apodi" class="h-14 mr-3">
-                    <div>
-                        <h1 class="text-xl font-bold leading-tight">Prefeitura Municipal de Apodi</h1>
-                        <p class="text-sm opacity-90">Estado do Rio Grande do Norte</p>
-                    </div>
-                </a>
-                
-                <nav class="flex items-center gap-2">
-                    <a href="/" class="nav-link hover:underline"><i class="fas fa-home mr-1"></i> Início</a>
-                    <a href="/transparencia" class="nav-link hover:underline"><i class="fas fa-search mr-1"></i> Transparência</a>
-                    <a href="/verificador" class="nav-link hover:underline"><i class="fas fa-shield-alt mr-1"></i> Verificador</a>
-                    <a href="/login" class="btn font-medium px-5 py-2.5 ml-2 rounded-md">
-                        <i class="fas fa-sign-in-alt mr-2"></i> Acessar
-                    </a>
-                </nav>
-            </div>
-        </div>
-    </header>
+  <!-- Navbar -->
+  <nav class="flex items-center justify-between flex-wrap bg-black bg-opacity-30 p-6">
+    <div class="flex items-center flex-shrink-0 text-white mr-6">
+      <span class="font-semibold text-xl tracking-tight">Verificador</span>
+    </div>
+    <div class="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
+      <div class="text-sm lg:flex-grow">
+        <a href="transparencia.html" class="block mt-4 lg:inline-block lg:mt-0 text-white hover:text-gray-300 mr-4">
+          <i class="fas fa-search mr-1"></i> Transparência
+        </a>
+        <a href="/verificador" class="block mt-4 lg:inline-block lg:mt-0 text-white hover:text-gray-300 mr-4">
+          <i class="fas fa-upload mr-1"></i> Verificar Documento
+        </a>
+        <a href="/login" class="block mt-4 lg:inline-block lg:mt-0 text-white hover:text-gray-300">
+          <i class="fas fa-sign-in-alt mr-1"></i> Login
+        </a>
+      </div>
+    </div>
+  </nav>
 
-    <main id="main-content">
-        <section class="gradient-bg text-white py-20">
-            <div class="container mx-auto px-4 text-center">
-                <div class="max-w-3xl mx-auto">
-                    <h2 class="text-4xl md:text-5xl font-bold mb-6">Integridade e Transparência na Gestão Pública</h2>
-                    <p class="text-xl mb-8 opacity-90">Utilizando tecnologia de ponta para garantir a autenticidade de documentos governamentais.</p>
-                    <div class="flex flex-col sm:flex-row justify-center gap-4">
-                         <a href="/verificador" class="btn bg-white text-green-700 font-medium py-3 px-8 rounded-lg text-lg hover:bg-gray-100">
-                            <i class="fas fa-shield-alt mr-2"></i> Acessar Ferramenta
-                        </a>
-                        <a href="/transparencia" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg hover:bg-white hover:text-green-700">
-                            <i class="fas fa-search mr-2"></i> Ver Transparência
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </section>
-        </main>
-    </body>
+  <!-- Hero Section -->
+  <div class="flex flex-col items-center justify-center text-center h-screen px-4">
+    <h1 class="text-4xl md:text-6xl font-bold mb-4">
+      <i class="fas fa-file-alt"></i> Verificador de Documentos
+    </h1>
+    <p class="text-lg md:text-xl mb-8 max-w-2xl">
+      Garanta a autenticidade de documentos utilizando tecnologia OCR e análise de conteúdo.
+    </p>
+    <div class="flex flex-col md:flex-row gap-4">
+      <a href="/verificador" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20">
+        <i class="fas fa-upload mr-2"></i> Enviar Documento
+      </a>
+      <a href="transparencia.html" class="btn border-2 border-white text-white font-medium py-3 px-8 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20">
+        <i class="fas fa-search mr-2"></i> Ver Transparência
+      </a>
+    </div>
+  </div>
+
+</body>
 </html>
