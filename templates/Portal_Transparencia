@@ -98,6 +98,11 @@
             font-weight: 500;
         }
         
+        .status-pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        
         .status-approved {
             background-color: #d1fae5;
             color: #065f46;
@@ -106,6 +111,37 @@
         .status-rejected {
             background-color: #fee2e2;
             color: #991b1b;
+        }
+        
+        .document-hash {
+            font-family: 'Fira Code', monospace;
+            background: var(--light);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+            word-break: break-all;
+        }
+        
+        .access-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            background-color: #e0e7ff;
+            color: var(--primary);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .restricted-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            background-color: #fee2e2;
+            color: #991b1b;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -125,12 +161,13 @@
                 </div>
                 
                 <nav class="flex items-center gap-2">
-                    <a href="/" class="nav-link"><i class="fas fa-home mr-2"></i> Início</a>
-                    <a href="/transparencia" class="nav-link"><i class="fas fa-search mr-2"></i> Transparência</a>
+                    <a href="index.html" class="nav-link"><i class="fas fa-home mr-2"></i> Início</a>
+                    <a href="transparencia.html" class="nav-link"><i class="fas fa-search mr-2"></i> Transparência</a>
                     <a href="#contact" class="nav-link"><i class="fas fa-envelope mr-2"></i> Contato</a>
-                    <a href="/verificador" class="btn px-5 py-2.5 ml-2">
-                        <i class="fas fa-shield-halved mr-2"></i> Verificador
-                    </a>
+                    <a href="#about" class="nav-link"><i class="fas fa-info-circle mr-2"></i> Sobre</a>
+                    <button class="btn px-5 py-2.5 ml-2">
+                        <i class="fas fa-check-circle mr-2"></i> Verificador
+                    </button>
                 </nav>
             </div>
         </div>
@@ -141,20 +178,51 @@
         <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-bold text-gray-900">Solicitar Acesso</h3>
-                <button onclick="closeAccessModal()" class="text-gray-500 hover:text-gray-700">&times;</button>
+                <button onclick="closeAccessModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
+            
             <form id="accessForm" class="space-y-4">
                 <div>
                     <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
-                    <input type="text" id="fullName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                    <input type="text" id="fullName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent">
                 </div>
+                
+                <div>
+                    <label for="cpf" class="block text-sm font-medium text-gray-700 mb-1">CPF *</label>
+                    <input type="text" id="cpf" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent" placeholder="000.000.000-00">
+                </div>
+                
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+                    <input type="email" id="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent">
+                </div>
+                
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Telefone *</label>
+                    <input type="tel" id="phone" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent" placeholder="(00) 00000-0000">
+                </div>
+                
                 <div>
                     <label for="reason" class="block text-sm font-medium text-gray-700 mb-1">Justificativa *</label>
-                    <textarea id="reason" rows="3" required class="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+                    <textarea id="reason" rows="3" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent" placeholder="Descreva o motivo do acesso"></textarea>
                 </div>
+                
+                <div class="flex items-center">
+                    <input type="checkbox" id="terms" required class="h-4 w-4 text-[var(--primary)] focus:ring-[var(--primary)] border-gray-300 rounded">
+                    <label for="terms" class="ml-2 block text-sm text-gray-700">
+                        Concordo com os <a href="#" class="text-[var(--primary)] hover:underline">Termos de Uso</a>
+                    </label>
+                </div>
+                
                 <div class="flex justify-end gap-3 pt-4">
-                    <button type="button" onclick="closeAccessModal()" class="btn-outline px-4 py-2">Cancelar</button>
-                    <button type="submit" class="btn px-6 py-2"><i class="fas fa-paper-plane mr-2"></i> Enviar</button>
+                    <button type="button" onclick="closeAccessModal()" class="btn-outline px-4 py-2">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn px-6 py-2">
+                        <i class="fas fa-paper-plane mr-2"></i> Enviar Solicitação
+                    </button>
                 </div>
             </form>
         </div>
@@ -162,118 +230,610 @@
 
     <!-- Conteúdo Principal -->
     <main class="container mx-auto px-4 py-8">
+        <!-- Título e Botões de Categorias -->
         <section class="mb-8 text-center">
             <h1 class="text-3xl font-bold text-gray-900 mb-2">Portal da Transparência</h1>
             <p class="text-lg text-gray-600 mb-6">Acesso a documentos públicos e informações governamentais</p>
             
             <div class="flex flex-wrap justify-center gap-4 mb-8">
-                <button id="emendasBtn" class="tab-btn active"><i class="fas fa-file-invoice-dollar mr-2"></i> Emendas</button>
-                <button id="receitasBtn" class="tab-btn"><i class="fas fa-money-bill-wave mr-2"></i> Receitas</button>
-                <button id="despesasBtn" class="tab-btn"><i class="fas fa-hand-holding-usd mr-2"></i> Despesas</button>
+                <button id="emendasBtn" class="tab-btn active">
+                    <i class="fas fa-file-invoice-dollar mr-2"></i> Emendas Parlamentares
+                </button>
+                <button id="receitasBtn" class="tab-btn">
+                    <i class="fas fa-money-bill-wave mr-2"></i> Receitas do Executivo
+                </button>
+                <button id="despesasBtn" class="tab-btn">
+                    <i class="fas fa-hand-holding-usd mr-2"></i> Despesas do Executivo
+                </button>
+            </div>
+            
+            <div class="bg-white p-4 rounded-lg shadow-sm mb-8">
+                <p class="text-gray-700">
+                    <i class="fas fa-info-circle text-[var(--primary)] mr-2"></i>
+                    Documentos marcados com <i class="fas fa-lock text-red-500"></i> requerem solicitação para visualização. O prazo de análise é de até 5 dias úteis.
+                </p>
             </div>
         </section>
 
-        <!-- Seção de Documentos - Emendas -->
+        <!-- Seção de Documentos - Emendas (conteúdo inicial) -->
         <section id="emendasSection">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">Emendas Parlamentares</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <i class="fas fa-file-invoice-dollar text-[var(--primary)] mr-3"></i>
+                Emendas Parlamentares
+            </h2>
+            <p class="text-gray-600 mb-6">Consultas sobre emendas parlamentares destinadas ao município</p>
+            
             <div class="grid md:grid-cols-2 gap-6 mb-8">
-                <!-- Documento 1 (Público) -->
-                <div class="card bg-white">
+                <!-- Documento 1 -->
+                <div class="card bg-white overflow-hidden">
                     <div class="p-6">
-                        <h3 class="font-bold text-lg text-gray-900">Emenda 001/2023</h3>
-                        <p class="text-sm text-gray-500 mb-4">Parlamentar: Dep. João Silva</p>
-                        <div class="flex gap-2">
-                            <button class="btn-outline flex-1 py-2 text-sm"><i class="far fa-eye mr-2"></i> Visualizar</button>
-                            <button class="btn flex-1 py-2 text-sm"><i class="fas fa-download mr-2"></i> Baixar</button>
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Emenda 001/2023</h3>
+                                <p class="text-sm text-gray-500">Parlamentar: Dep. João Silva</p>
+                            </div>
+                            <span class="access-badge">
+                                <i class="fas fa-file-pdf mr-1"></i> PDF
+                            </span>
                         </div>
-                        <div class="mt-4 pt-4 border-t border-gray-200">
-                            <p class="text-xs text-gray-500 mb-1">Hash de Integridade (SHA-256):</p>
-                            <p class="text-xs font-mono text-gray-600 break-all">a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2</p>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Valor:</p>
+                            <p class="text-gray-900">R$ 150.000,00</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 15/03/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Saúde
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm">
+                                <i class="far fa-eye mr-2"></i> Visualizar
+                            </button>
+                            <button class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-download mr-2"></i> Baixar
+                            </button>
                         </div>
                     </div>
                 </div>
-                <!-- Documento 2 (Restrito) -->
-                <div class="card bg-white">
+                
+                <!-- Documento 2 (restrito) -->
+                <div class="card bg-white overflow-hidden">
                     <div class="p-6">
-                        <h3 class="font-bold text-lg text-gray-900">Emenda 045/2023</h3>
-                        <p class="text-sm text-gray-500 mb-4">Parlamentar: Dep. Maria Souza</p>
-                        <div class="flex gap-2">
-                            <button class="btn-outline flex-1 py-2 text-sm" disabled><i class="fas fa-lock mr-2"></i> Acesso Restrito</button>
-                            <button onclick="openAccessModal()" class="btn flex-1 py-2 text-sm"><i class="fas fa-file-alt mr-2"></i> Solicitar Acesso</button>
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Emenda 045/2023</h3>
+                                <p class="text-sm text-gray-500">Parlamentar: Dep. Maria Souza</p>
+                            </div>
+                            <span>
+                                <i class="fas fa-lock text-red-500"></i>
+                            </span>
                         </div>
-                        <div class="mt-4 pt-4 border-t border-gray-200">
-                            <p class="text-xs text-gray-500 mb-1">Hash de Integridade (SHA-256):</p>
-                            <p class="text-xs font-mono text-gray-600 break-all">f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5</p>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Valor:</p>
+                            <p class="text-gray-900">R$ 250.000,00</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 02/05/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Educação
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm" disabled>
+                                <i class="fas fa-lock mr-2"></i> Acesso Restrito
+                            </button>
+                            <button onclick="openAccessModal()" class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-file-alt mr-2"></i> Solicitar Acesso
+                            </button>
                         </div>
                     </div>
                 </div>
-                <!-- Documento 3 (Público) -->
-                <div class="card bg-white">
+                
+                <!-- Documento 3 -->
+                <div class="card bg-white overflow-hidden">
                     <div class="p-6">
-                        <h3 class="font-bold text-lg text-gray-900">Emenda 088/2024</h3>
-                        <p class="text-sm text-gray-500 mb-4">Parlamentar: Dep. Carlos Andrade</p>
-                        <div class="flex gap-2">
-                            <button class="btn-outline flex-1 py-2 text-sm"><i class="far fa-eye mr-2"></i> Visualizar</button>
-                            <button class="btn flex-1 py-2 text-sm"><i class="fas fa-download mr-2"></i> Baixar</button>
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Emenda 078/2023</h3>
+                                <p class="text-sm text-gray-500">Parlamentar: Dep. Carlos Oliveira</p>
+                            </div>
+                            <span class="access-badge">
+                                <i class="fas fa-file-excel mr-1"></i> Planilha
+                            </span>
                         </div>
-                        <div class="mt-4 pt-4 border-t border-gray-200">
-                            <p class="text-xs text-gray-500 mb-1">Hash de Integridade (SHA-256):</p>
-                            <p class="text-xs font-mono text-gray-600 break-all">7890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234</p>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Valor:</p>
+                            <p class="text-gray-900">R$ 180.000,00</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 10/06/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Infraestrutura
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm">
+                                <i class="far fa-eye mr-2"></i> Visualizar
+                            </button>
+                            <button class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-download mr-2"></i> Baixar
+                            </button>
                         </div>
                     </div>
                 </div>
-                <!-- Documento 4 (Restrito) -->
-                <div class="card bg-white">
+                
+                <!-- Documento 4 (restrito) -->
+                <div class="card bg-white overflow-hidden">
                     <div class="p-6">
-                        <h3 class="font-bold text-lg text-gray-900">Emenda 102/2024</h3>
-                        <p class="text-sm text-gray-500 mb-4">Parlamentar: Dep. Ana Lima</p>
-                        <div class="flex gap-2">
-                            <button class="btn-outline flex-1 py-2 text-sm" disabled><i class="fas fa-lock mr-2"></i> Acesso Restrito</button>
-                            <button onclick="openAccessModal()" class="btn flex-1 py-2 text-sm"><i class="fas fa-file-alt mr-2"></i> Solicitar Acesso</button>
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Emenda 112/2023</h3>
+                                <p class="text-sm text-gray-500">Parlamentar: Dep. Ana Santos</p>
+                            </div>
+                            <span>
+                                <i class="fas fa-lock text-red-500"></i>
+                            </span>
                         </div>
-                        <div class="mt-4 pt-4 border-t border-gray-200">
-                            <p class="text-xs text-gray-500 mb-1">Hash de Integridade (SHA-256):</p>
-                            <p class="text-xs font-mono text-gray-600 break-all">fedcba098765fedcba098765fedcba098765fedcba098765fedcba098765fedc</p>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Valor:</p>
+                            <p class="text-gray-900">R$ 320.000,00</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 25/07/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Segurança
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm" disabled>
+                                <i class="fas fa-lock mr-2"></i> Acesso Restrito
+                            </button>
+                            <button onclick="openAccessModal()" class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-file-alt mr-2"></i> Solicitar Acesso
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Seção de Documentos - Receitas (oculta) -->
+        <!-- Seção de Documentos - Receitas (oculta inicialmente) -->
         <section id="receitasSection" class="hidden">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">Receitas do Executivo</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <i class="fas fa-money-bill-wave text-[var(--primary)] mr-3"></i>
+                Receitas do Executivo
+            </h2>
+            <p class="text-gray-600 mb-6">Entradas nos cofres públicos obtidas por meio de impostos, taxas, transferências e outras fontes</p>
+            
             <div class="grid md:grid-cols-2 gap-6 mb-8">
-                <!-- Conteúdo de exemplo para Receitas -->
+                <!-- Documento 1 -->
+                <div class="card bg-white overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Receitas Tributárias Q2/2023</h3>
+                                <p class="text-sm text-gray-500">Secretaria da Fazenda</p>
+                            </div>
+                            <span class="access-badge">
+                                <i class="fas fa-file-pdf mr-1"></i> PDF
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Período:</p>
+                            <p class="text-gray-900">Abril - Junho 2023</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 10/07/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Tributos
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm">
+                                <i class="far fa-eye mr-2"></i> Visualizar
+                            </button>
+                            <button class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-download mr-2"></i> Baixar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documento 2 -->
+                <div class="card bg-white overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Transferências Federais</h3>
+                                <p class="text-sm text-gray-500">Secretaria de Planejamento</p>
+                            </div>
+                            <span class="access-badge">
+                                <i class="fas fa-file-excel mr-1"></i> Planilha
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Período:</p>
+                            <p class="text-gray-900">Janeiro - Dezembro 2023</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 15/01/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Transferências
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm">
+                                <i class="far fa-eye mr-2"></i> Visualizar
+                            </button>
+                            <button class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-download mr-2"></i> Baixar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documento 3 (restrito) -->
+                <div class="card bg-white overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Receitas de Serviços</h3>
+                                <p class="text-sm text-gray-500">Secretaria de Administração</p>
+                            </div>
+                            <span>
+                                <i class="fas fa-lock text-red-500"></i>
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Período:</p>
+                            <p class="text-gray-900">Março 2023</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 05/04/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Taxas
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm" disabled>
+                                <i class="fas fa-lock mr-2"></i> Acesso Restrito
+                            </button>
+                            <button onclick="openAccessModal()" class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-file-alt mr-2"></i> Solicitar Acesso
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documento 4 -->
+                <div class="card bg-white overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Receitas Patrimoniais</h3>
+                                <p class="text-sm text-gray-500">Secretaria de Patrimônio</p>
+                            </div>
+                            <span class="access-badge">
+                                <i class="fas fa-file-pdf mr-1"></i> PDF
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Período:</p>
+                            <p class="text-gray-900">2022 - 2023</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 20/02/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Patrimônio
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm">
+                                <i class="far fa-eye mr-2"></i> Visualizar
+                            </button>
+                            <button class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-download mr-2"></i> Baixar
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Seção de Documentos - Despesas (oculta) -->
+        <!-- Seção de Documentos - Despesas (oculta inicialmente) -->
         <section id="despesasSection" class="hidden">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">Despesas do Executivo</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <i class="fas fa-hand-holding-usd text-[var(--primary)] mr-3"></i>
+                Despesas do Executivo
+            </h2>
+            <p class="text-gray-600 mb-6">Aplicações de recursos para realização e manutenção das atividades públicas</p>
+            
             <div class="grid md:grid-cols-2 gap-6 mb-8">
-                <!-- Conteúdo de exemplo para Despesas -->
+                <!-- Documento 1 -->
+                <div class="card bg-white overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Despesas com Pessoal</h3>
+                                <p class="text-sm text-gray-500">Secretaria de Administração</p>
+                            </div>
+                            <span class="access-badge">
+                                <i class="fas fa-file-pdf mr-1"></i> PDF
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Período:</p>
+                            <p class="text-gray-900">Janeiro - Junho 2023</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 15/07/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Folha de Pagamento
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm">
+                                <i class="far fa-eye mr-2"></i> Visualizar
+                            </button>
+                            <button class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-download mr-2"></i> Baixar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documento 2 (restrito) -->
+                <div class="card bg-white overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Despesas de Investimento</h3>
+                                <p class="text-sm text-gray-500">Secretaria de Obras</p>
+                            </div>
+                            <span>
+                                <i class="fas fa-lock text-red-500"></i>
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Período:</p>
+                            <p class="text-gray-900">2022 - 2023</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 10/05/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Infraestrutura
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm" disabled>
+                                <i class="fas fa-lock mr-2"></i> Acesso Restrito
+                            </button>
+                            <button onclick="openAccessModal()" class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-file-alt mr-2"></i> Solicitar Acesso
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documento 3 -->
+                <div class="card bg-white overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Despesas Correntes</h3>
+                                <p class="text-sm text-gray-500">Secretaria de Finanças</p>
+                            </div>
+                            <span class="access-badge">
+                                <i class="fas fa-file-excel mr-1"></i> Planilha
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Período:</p>
+                            <p class="text-gray-900">1º Trimestre 2023</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 05/04/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Manutenção
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm">
+                                <i class="far fa-eye mr-2"></i> Visualizar
+                            </button>
+                            <button class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-download mr-2"></i> Baixar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Documento 4 (restrito) -->
+                <div class="card bg-white overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-900">Despesas com Saúde</h3>
+                                <p class="text-sm text-gray-500">Secretaria de Saúde</p>
+                            </div>
+                            <span>
+                                <i class="fas fa-lock text-red-500"></i>
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-gray-500 mb-1">Período:</p>
+                            <p class="text-gray-900">2023</p>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="text-sm text-gray-500">
+                                <i class="far fa-calendar-alt mr-1"></i> 15/08/2023
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                <i class="fas fa-tag mr-1"></i> Saúde Pública
+                            </span>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button class="btn-outline flex-1 py-2 text-sm" disabled>
+                                <i class="fas fa-lock mr-2"></i> Acesso Restrito
+                            </button>
+                            <button onclick="openAccessModal()" class="btn flex-1 py-2 text-sm">
+                                <i class="fas fa-file-alt mr-2"></i> Solicitar Acesso
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
         <!-- Seção de Minhas Solicitações -->
         <section class="mt-12">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">Minhas Solicitações</h2>
+            <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <i class="fas fa-clipboard-list text-[var(--primary)] mr-3"></i>
+                Minhas Solicitações
+            </h2>
+            
             <div class="overflow-x-auto">
                 <table class="min-w-full bg-white rounded-lg overflow-hidden">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
-                        <!-- Exemplo de Solicitação -->
+                        <!-- Solicitação 1 (Aprovada) -->
                         <tr>
-                            <td class="px-6 py-4">Emenda 045/2023</td>
-                            <td class="px-6 py-4"><span class="status-pill status-approved"><i class="fas fa-check-circle mr-1"></i> Aprovado</span></td>
-                            <td class="px-6 py-4"><a href="#" class="text-[var(--primary)] hover:underline">Baixar</a></td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="font-medium text-gray-900">Emenda 045/2023</div>
+                                <div class="text-sm text-gray-500">Secretaria de Educação</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                10/06/2023
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="status-pill status-approved">
+                                    <i class="fas fa-check-circle mr-1"></i> Aprovado
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="#" class="text-[var(--primary)] hover:text-[var(--secondary)] mr-3">
+                                    <i class="fas fa-download mr-1"></i> Baixar
+                                </a>
+                                <a href="#" class="text-gray-600 hover:text-gray-900">
+                                    <i class="fas fa-info-circle mr-1"></i> Detalhes
+                                </a>
+                            </td>
+                        </tr>
+                        
+                        <!-- Solicitação 2 (Pendente) -->
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="font-medium text-gray-900">Despesas de Investimento</div>
+                                <div class="text-sm text-gray-500">Secretaria de Obras</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                05/06/2023
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="status-pill status-pending">
+                                    <i class="fas fa-clock mr-1"></i> Pendente
+                                </span>
+                                <div class="text-xs text-gray-500 mt-1">Análise em até 5 dias</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button disabled class="text-gray-400 mr-3">
+                                    <i class="fas fa-lock mr-1"></i> Aguardando
+                                </button>
+                                <a href="#" class="text-gray-600 hover:text-gray-900">
+                                    <i class="fas fa-info-circle mr-1"></i> Detalhes
+                                </a>
+                            </td>
+                        </tr>
+                        
+                        <!-- Solicitação 3 (Negada) -->
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="font-medium text-gray-900">Despesas com Saúde</div>
+                                <div class="text-sm text-gray-500">Secretaria de Saúde</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                28/05/2023
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="status-pill status-rejected">
+                                    <i class="fas fa-times-circle mr-1"></i> Negado
+                                </span>
+                                <div class="text-xs text-gray-500 mt-1">Justificativa disponível</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="#" class="text-gray-600 hover:text-gray-900">
+                                    <i class="fas fa-info-circle mr-1"></i> Detalhes
+                                </a>
+                                <a href="#" class="text-[var(--primary)] hover:text-[var(--secondary)] ml-3">
+                                    <i class="fas fa-redo mr-1"></i> Reenviar
+                                </a>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -282,9 +842,9 @@
     </main>
 
     <!-- Footer -->
-    <footer id="contact" class="bg-gray-900 text-gray-300 py-12 mt-12">
+    <footer class="bg-gray-900 text-gray-300 py-12 mt-12">
         <div class="container mx-auto px-4">
-            <div class="grid md:grid-cols-3 gap-8 mb-8">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
                 <div>
                     <div class="flex items-center mb-4">
                         <div class="bg-[var(--primary)] p-2 rounded-lg mr-3">
@@ -292,15 +852,34 @@
                         </div>
                         <span class="font-bold text-white text-lg">VeriHash</span>
                     </div>
-                    <p>Solução inovadora para gestão documental com integridade garantida.</p>
+                    <p class="mb-4">Solução inovadora para gestão documental com integridade garantida.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="text-gray-400 hover:text-white">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                        <a href="mailto:contato@verihash.com" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-envelope"></i>
+                        </a>
+                    </div>
                 </div>
                 
                 <div>
-                    <h4 class="text-white font-bold mb-4">Links Úteis</h4>
+                    <h4 class="text-white font-bold mb-4">Links úteis</h4>
                     <ul class="space-y-2">
-                        <li><a href="/transparencia" class="hover:text-white">Portal de Transparência</a></li>
+                        <li><a href="transparencia.html" class="hover:text-white">Portal de Transparência</a></li>
                         <li><a href="#" class="hover:text-white">Perguntas Frequentes</a></li>
                         <li><a href="#" class="hover:text-white">Termos de Uso</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="text-white font-bold mb-4">Documentação</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-white">Manual do Usuário</a></li>
+                        <li><a href="#" class="hover:text-white">Política de Privacidade</a></li>
                     </ul>
                 </div>
                 
@@ -313,11 +892,16 @@
                         </li>
                         <li class="flex items-center">
                             <i class="fab fa-whatsapp mr-2 text-[var(--primary)]"></i>
-                            <a href="#" class="hover:text-white">(84) 99999-9999</a>
+                            <a href="https://wa.me/5511999999999" class="hover:text-white">(11) 99999-9999</a>
+                        </li>
+                        <li class="flex items-center">
+                            <i class="fab fa-instagram mr-2 text-[var(--primary)]"></i>
+                            <a href="https://instagram.com/verihash" class="hover:text-white">@verihash</a>
                         </li>
                     </ul>
                 </div>
             </div>
+            
             <div class="border-t border-gray-800 pt-8 text-center text-sm">
                 <p>© 2025 VeriHash. Todos os direitos reservados.</p>
             </div>
@@ -329,38 +913,86 @@
         function openAccessModal() {
             document.getElementById('accessModal').classList.remove('hidden');
         }
+        
         function closeAccessModal() {
             document.getElementById('accessModal').classList.add('hidden');
         }
+        
+        // Fechar modal ao clicar fora
+        document.getElementById('accessModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeAccessModal();
+            }
+        });
+        
+        // Formulário de solicitação
         document.getElementById('accessForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            alert('Solicitação enviada com sucesso!');
+            alert('Solicitação enviada com sucesso! Você receberá um e-mail com as instruções.\nO prazo para análise é de até 5 dias úteis.');
             closeAccessModal();
+            
+            // Aqui você adicionaria a lógica para atualizar a lista de solicitações
         });
-
+        
+        // Máscaras para os campos
+        document.getElementById('cpf').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 3) value = value.replace(/^(\d{3})(\d)/g, '$1.$2');
+            if (value.length > 6) value = value.replace(/^(\d{3})\.(\d{3})(\d)/g, '$1.$2.$3');
+            if (value.length > 9) value = value.replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/g, '$1.$2.$3-$4');
+            e.target.value = value.substring(0, 14);
+        });
+        
+        document.getElementById('phone').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 0) value = '(' + value;
+            if (value.length > 3) value = value.replace(/^(\d{2})(\d)/g, '$1) $2');
+            if (value.length > 10) value = value.replace(/(\d{5})(\d)/, '$1-$2');
+            e.target.value = value.substring(0, 15);
+        });
+        
         // Controle das abas de conteúdo
-        const tabs = ['emendas', 'receitas', 'despesas'];
-        tabs.forEach(tab => {
-            document.getElementById(`${tab}Btn`).addEventListener('click', function() {
-                tabs.forEach(t => {
-                    document.getElementById(`${t}Section`).classList.add('hidden');
-                    document.getElementById(`${t}Btn`).classList.remove('active');
-                });
-                document.getElementById(`${tab}Section`).classList.remove('hidden');
-                this.classList.add('active');
-            });
+        document.getElementById('emendasBtn').addEventListener('click', function() {
+            document.getElementById('emendasSection').classList.remove('hidden');
+            document.getElementById('receitasSection').classList.add('hidden');
+            document.getElementById('despesasSection').classList.add('hidden');
+            
+            document.getElementById('emendasBtn').classList.add('active');
+            document.getElementById('receitasBtn').classList.remove('active');
+            document.getElementById('despesasBtn').classList.remove('active');
         });
-
-        // Scroll suave para âncoras
+        
+        document.getElementById('receitasBtn').addEventListener('click', function() {
+            document.getElementById('emendasSection').classList.add('hidden');
+            document.getElementById('receitasSection').classList.remove('hidden');
+            document.getElementById('despesasSection').classList.add('hidden');
+            
+            document.getElementById('emendasBtn').classList.remove('active');
+            document.getElementById('receitasBtn').classList.add('active');
+            document.getElementById('despesasBtn').classList.remove('active');
+        });
+        
+        document.getElementById('despesasBtn').addEventListener('click', function() {
+            document.getElementById('emendasSection').classList.add('hidden');
+            document.getElementById('receitasSection').classList.add('hidden');
+            document.getElementById('despesasSection').classList.remove('hidden');
+            
+            document.getElementById('emendasBtn').classList.remove('active');
+            document.getElementById('receitasBtn').classList.remove('active');
+            document.getElementById('despesasBtn').classList.add('active');
+        });
+        
+        // Suaviza o scroll para âncoras
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
-                });
+            anchor.addEventListener('click', function(e) {
+                if (this.getAttribute('href') !== '#') {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
             });
         });
     </script>
 </body>
 </html>
-
