@@ -5,10 +5,22 @@ import io
 import requests
 from flask import Flask, request, render_template
 from dotenv import load_dotenv
+from supabase import create_client, Client # <-- 1. IMPORTAÇÃO ADICIONADA
 
-# Carrega a chave da API de OCR a partir das variáveis de ambiente
+# Carrega a chave da API de OCR e as chaves do Supabase
 load_dotenv()
 OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL") # <-- VARIÁVEL ADICIONADA
+SUPABASE_KEY = os.getenv("SUPABASE_KEY") # <-- VARIÁVEL ADICIONADA
+
+# --- 2. CONEXÃO COM O SUPABASE ---
+try:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print("Conexão com o Supabase estabelecida com sucesso!")
+except Exception as e:
+    print(f"Erro ao conectar com o Supabase: {e}")
+    supabase = None
+# --------------------------------
 
 app = Flask(__name__)
 
@@ -80,7 +92,7 @@ def index():
                 texto_extraido = extrair_texto_ocr_space(file_bytes, file.filename)
                 
                 if not texto_extraido.strip():
-                     raise ValueError("Nenhum texto pôde ser extraído do documento.")
+                         raise ValueError("Nenhum texto pôde ser extraído do documento.")
 
                 hash_sha256 = hashlib.sha256(texto_extraido.encode('utf-8')).hexdigest()
                 analise = analisar_texto(texto_extraido)
@@ -91,6 +103,22 @@ def index():
                     "hash": hash_sha256,
                     "texto": texto_extraido
                 }
+
+                # --- 3. SALVANDO OS DADOS NO SUPABASE ---
+                if supabase:
+                    try:
+                        supabase.table('analises').insert({
+                            'hash_sha256': resultado_analise['hash'],
+                            'status': resultado_analise['status'],
+                            'erros_detectados': resultado_analise['erros'],
+                            'texto_extraido': resultado_analise['texto']
+                        }).execute()
+                        print("Resultado da análise salvo no Supabase com sucesso!")
+                    except Exception as e:
+                        print(f"Erro ao salvar no Supabase: {e}")
+                        # Opcional: Adicionar uma mensagem de erro ao resultado se o salvamento falhar
+                        resultado_analise['erros'].append("Aviso: A análise foi concluída, mas não pôde ser salva no banco de dados.")
+                # -----------------------------------------
 
             except Exception as e:
                 resultado_analise = {"status": "ERRO", "erros": [f"Não foi possível processar o arquivo: {e}"]}
