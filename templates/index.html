@@ -3,150 +3,123 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificador de Documentos</title>
+    <title>Analisador de PDF</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f4f4f4;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .container {
-            background-color: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 600px;
-            text-align: center;
-        }
-        h1 {
-            color: #0056b3;
-            margin-bottom: 20px;
-        }
-        .upload-section {
-            margin-bottom: 30px;
-            border: 2px dashed #ccc;
-            padding: 20px;
-            border-radius: 8px;
-            background-color: #fafafa;
-        }
-        input[type="file"] {
-            margin-bottom: 15px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: calc(100% - 22px);
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 12px 25px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .response-section {
-            margin-top: 20px;
-            padding: 20px;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            background-color: #fff;
-            text-align: left;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .response-section h2 {
-            color: #007bff;
-            margin-top: 0;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        .status-secure {
-            color: green;
-            font-weight: bold;
-        }
-        .status-suspicious {
-            color: red;
-            font-weight: bold;
-        }
-        pre {
-            background-color: #e9e9e9;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            white-space: pre-wrap; /* Quebra linhas longas */
-            word-wrap: break-word; /* Quebra palavras longas */
-        }
-        .loading {
-            display: none;
-            margin-top: 20px;
-            font-size: 1.2em;
-            color: #007bff;
+        body { padding: 20px; background-color: #f8f9fa; }
+        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .status-confiavel { color: #28a745; }
+        .status-suspeito { color: #dc3545; }
+        #resultado { display: none; }
+        .json-viewer { 
+            background-color: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 5px; 
+            border: 1px solid #dee2e6;
+            max-height: 300px;
+            overflow-y: auto;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Verificador de Documentos Oficiais</h1>
+        <h1 class="text-center mb-4">📄 Analisador de PDF</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <strong>Enviar Novo PDF</strong>
+                    </div>
+                    <div class="card-body">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="pdfFile" class="form-label">Selecione um arquivo PDF:</label>
+                                <input class="form-control" type="file" id="pdfFile" accept=".pdf" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Analisar PDF</button>
+                        </form>
+                        <div id="uploadStatus" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
 
-        <div class="upload-section">
-            <p>Selecione um arquivo de imagem (JPG, PNG) para análise:</p>
-            <input type="file" id="documentFile" accept=".jpg,.jpeg,.png">
-            <button onclick="uploadDocument()">Analisar Documento</button>
-            <div id="loading" class="loading">Carregando e analisando...</div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <strong>Consultar Análise Existente</strong>
+                    </div>
+                    <div class="card-body">
+                        <form id="searchForm">
+                            <div class="mb-3">
+                                <label for="hashInput" class="form-label">Digite o Hash SHA-256:</label>
+                                <input type="text" class="form-control" id="hashInput" placeholder="Ex: a1b2c3..." required>
+                            </div>
+                            <button type="submit" class="btn btn-info text-white">Buscar Análise</button>
+                        </form>
+                        <div id="searchStatus" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="response-section" id="responseSection" style="display: none;">
-            <h2>Resultado da Análise</h2>
-            <p><strong>Status:</strong> <span id="statusResult"></span></p>
-            <p><strong>Nome do Arquivo:</strong> <span id="fileNameResult"></span></p>
-            <p><strong>Hash do Conteúdo:</strong> <span id="hashResult"></span></p>
-            <p><strong>Inconsistências Detectadas:</strong></p>
-            <ul id="errorsList"></ul>
-            <p><strong>Texto Extraído (OCR):</strong></p>
-            <pre id="extractedText"></pre>
-        </div>
-
-        <div class="response-section" id="errorSection" style="display: none;">
-            <h2>Erro na Análise</h2>
-            <p id="errorMessage" style="color: red;"></p>
+        <div id="resultado" class="card mt-4">
+            <div class="card-header bg-secondary text-white">
+                <strong>Resultado da Análise</strong>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Status:</strong> <span id="status" class="fw-bold"></span></p>
+                        <p><strong>Hash SHA-256:</strong> <code id="hash"></code></p>
+                        <p><strong>Data da Análise:</strong> <span id="data"></span></p>
+                        
+                        <div class="mb-3">
+                            <strong>Erros Detectados:</strong>
+                            <ul id="erros" class="list-group mt-2"></ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Texto Extraído:</strong>
+                        <div class="mt-2 p-3 bg-light border rounded" style="max-height: 200px; overflow-y: auto;">
+                            <pre id="texto"></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <strong>Dados Completos (JSON):</strong>
+                    <div class="json-viewer mt-2">
+                        <pre id="jsonData"></pre>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        async function uploadDocument() {
-            const fileInput = document.getElementById('documentFile');
-            const file = fileInput.files[0];
-            const loadingDiv = document.getElementById('loading');
-            const responseSection = document.getElementById('responseSection');
-            const errorSection = document.getElementById('errorSection');
+        const API_BASE_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:5000' 
+            : 'SUA_URL_DA_API_AQUI';
 
-            // Resetar seções de resposta/erro
-            responseSection.style.display = 'none';
-            errorSection.style.display = 'none';
-            loadingDiv.style.display = 'block'; // Mostrar loading
-
-            if (!file) {
-                alert('Por favor, selecione um arquivo para upload.');
-                loadingDiv.style.display = 'none';
+        // Envio de PDF
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('pdfFile');
+            const statusDiv = document.getElementById('uploadStatus');
+            
+            if (!fileInput.files.length) {
+                statusDiv.innerHTML = '<div class="alert alert-warning">Selecione um arquivo PDF</div>';
                 return;
             }
 
+            const file = fileInput.files[0];
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('arquivo', file);
+
+            statusDiv.innerHTML = '<div class="alert alert-info">Enviando e analisando PDF...</div>';
 
             try {
-                const response = await fetch('/upload', {
+                const response = await fetch(`${API_BASE_URL}/analisar-pdf`, {
                     method: 'POST',
                     body: formData
                 });
@@ -154,41 +127,78 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    loadingDiv.style.display = 'none'; // Esconder loading
-                    responseSection.style.display = 'block'; // Mostrar seção de resposta
-
-                    document.getElementById('fileNameResult').textContent = data.nome_arquivo || 'N/A';
-                    document.getElementById('hashResult').textContent = data.hash || 'N/A';
-                    document.getElementById('extractedText').textContent = data.texto_extraido || 'Nenhum texto extraído.';
-
-                    const statusSpan = document.getElementById('statusResult');
-                    statusSpan.textContent = data.status || 'Desconhecido';
-                    statusSpan.className = data.status === 'SUSPEITO' ? 'status-suspicious' : 'status-secure';
-
-                    const errorsList = document.getElementById('errorsList');
-                    errorsList.innerHTML = '';
-                    if (data.erros && data.erros.length > 0) {
-                        data.erros.forEach(error => {
-                            const li = document.createElement('li');
-                            li.textContent = error;
-                            errorsList.appendChild(li);
-                        });
-                    } else {
-                        const li = document.createElement('li');
-                        li.textContent = 'Nenhuma inconsistência detectada. Documento parece seguro.';
-                        errorsList.appendChild(li);
-                    }
+                    statusDiv.innerHTML = '<div class="alert alert-success">Análise concluída com sucesso!</div>';
+                    displayResults(data.analise);
                 } else {
-                    // Tratar erros HTTP (400, 500, etc.)
-                    loadingDiv.style.display = 'none'; // Esconder loading
-                    errorSection.style.display = 'block'; // Mostrar seção de erro
-                    document.getElementById('errorMessage').textContent = data.erro || data.mensagem || 'Erro desconhecido ao processar o arquivo.';
+                    statusDiv.innerHTML = `<div class="alert alert-danger">Erro: ${data.erro || 'Erro desconhecido'}</div>`;
                 }
             } catch (error) {
-                loadingDiv.style.display = 'none'; // Esconder loading
-                errorSection.style.display = 'block'; // Mostrar seção de erro
-                document.getElementById('errorMessage').textContent = `Erro de rede ou na requisição: ${error.message}`;
+                statusDiv.innerHTML = `<div class="alert alert-danger">Falha na conexão: ${error.message}</div>`;
             }
+        });
+
+        // Consulta por hash
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const hashInput = document.getElementById('hashInput').value.trim();
+            const statusDiv = document.getElementById('searchStatus');
+            
+            if (!hashInput) {
+                statusDiv.innerHTML = '<div class="alert alert-warning">Digite um hash válido</div>';
+                return;
+            }
+
+            statusDiv.innerHTML = '<div class="alert alert-info">Buscando análise...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/analise/${hashInput}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.innerHTML = '<div class="alert alert-success">Análise encontrada!</div>';
+                    displayResults(data);
+                } else {
+                    statusDiv.innerHTML = `<div class="alert alert-danger">${data.erro || 'Análise não encontrada'}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="alert alert-danger">Falha na conexão: ${error.message}</div>`;
+            }
+        });
+
+        // Exibe os resultados
+        function displayResults(analysis) {
+            document.getElementById('resultado').style.display = 'block';
+            
+            // Status (com cor)
+            const statusElement = document.getElementById('status');
+            statusElement.textContent = analysis.status;
+            statusElement.className = analysis.status === 'confiavel' ? 'fw-bold status-confiavel' : 'fw-bold status-suspeito';
+            
+            // Demais campos
+            document.getElementById('hash').textContent = analysis.hash_sha256;
+            document.getElementById('data').textContent = new Date(analysis.created_at).toLocaleString();
+            document.getElementById('texto').textContent = analysis.texto_extraido || '(Nenhum texto extraído)';
+            
+            // Erros detectados
+            const errosList = document.getElementById('erros');
+            errosList.innerHTML = '';
+            
+            if (analysis.erros_detectados && analysis.erros_detectados.length > 0) {
+                analysis.erros_detectados.forEach(erro => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item list-group-item-danger';
+                    li.textContent = `${erro.codigo}: ${erro.mensagem}`;
+                    errosList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.className = 'list-group-item list-group-item-success';
+                li.textContent = 'Nenhum erro detectado';
+                errosList.appendChild(li);
+            }
+            
+            // JSON completo (para debug)
+            document.getElementById('jsonData').textContent = JSON.stringify(analysis, null, 2);
         }
     </script>
 </body>
