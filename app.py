@@ -2,6 +2,7 @@ import os
 import re
 import hashlib
 import io
+import json
 import requests
 from flask import Flask, request, render_template, jsonify
 from supabase import create_client, Client
@@ -19,7 +20,6 @@ SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 app = Flask(__name__)
 _supabase_client = None
 
-# --- Conexão Otimizada com o Supabase ---
 def get_supabase_client():
     """Cria e reutiliza uma conexão com o Supabase."""
     global _supabase_client
@@ -39,17 +39,10 @@ def allowed_file(filename):
 # --- FUNÇÕES DE LÓGICA (Análise, OCR) ---
 # =================================================================================
 
-def analisar_texto(texto_extraido):
-    """Realiza as análises de fraude no texto extraído."""
-    erros_detectados = []
-    texto_lower = texto_extraido.lower()
-
+def analisar_texto_completo(texto):
+    """Executa todas as regras de verificação no texto extraído."""
     # (Sua lógica de análise detalhada permanece aqui)
-    PALAVRAS_SUSPEITAS = ["dispensa de licitação", "caráter de urgência"]
-    for palavra in PALAVRAS_SUSPEITAS:
-        if palavra in texto_lower:
-            erros_detectados.append(f"⚠️ Alerta de Termo Sensível: '{palavra}'")
-
+    erros_detectados = []
     status = "SUSPEITO" if erros_detectados else "SEGURO"
     return {"status": status, "erros": erros_detectados}
 
@@ -81,6 +74,7 @@ def verificador_page():
     if request.method == 'GET':
         return render_template('verificação.html')
 
+    # Lógica de POST
     if 'file' not in request.files or request.files['file'].filename == '':
         return render_template('verificação.html', erro_upload="Nenhum arquivo selecionado.")
     
@@ -88,12 +82,49 @@ def verificador_page():
     
     if not allowed_file(file.filename):
         return render_template('verificação.html', erro_upload="Formato de arquivo não suportado.")
-    
-    try:
-        file_bytes = file.read()
-        texto_extraido = extrair_texto_ocr_space(file_bytes, file.filename)
-        
-        if not texto_extraido.strip():
-                 raise ValueError("Nenhum texto pôde ser extraído do documento.")
 
-        hash_sha2
+    filename = secure_filename(file.filename)
+    file_bytes = file.read()
+
+    try:
+        supabase = get_supabase_client()
+        hash_arquivo = hashlib.sha256(file_bytes).hexdigest()
+
+        data, count = supabase.table('analises').select('*').eq('hash_arquivo', hash_arquivo).execute()
+        
+        if len(data[1]) > 0:
+            print("Documento já processado. Retornando do cache.")
+            return render_template('verificação.html', resultado=data[1][0])
+
+        print("Arquivo novo, iniciando processamento completo.")
+        
+        texto_extraido = extrair_texto_ocr_space(file_bytes, filename)
+        if not texto_extraido.strip():
+            raise ValueError("Nenhum texto pôde ser extraído do documento.")
+
+        analise = analisar_texto_completo(texto_extraido)
+        hash_conteudo = hashlib.sha256(texto_extraido.encode('utf-8')).hexdigest()
+        
+        caminho_storage = f"documentos/{hash_arquivo}_{filename}"
+        supabase.storage.from_("armazenamento").upload(
+            path=caminho_storage, file=file_bytes, file_options={"content-type": file.content_type}
+        )
+        
+        resultado_final = {
+            "nome_arquivo": filename, "hash_arquivo": hash_arquivo, "hash_conteudo": hash_conteudo,
+            "status": analise['status'], "erros_detectados": analise['erros'],
+            "texto_extraido": texto_extraido, "caminho_storage": caminho_storage
+        }
+        supabase.table('analises').insert(resultado_final).execute()
+        print("Nova análise salva no Supabase.")
+        
+        return render_template('verificação.html', resultado=resultado_final)
+
+    except Exception as e:
+        return render_template('verificação.html', resultado={"status": "ERRO", "erros": [f"Erro inesperado: {e}"]})
+    
+# ... (outras rotas)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+    
