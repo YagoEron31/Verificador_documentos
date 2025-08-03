@@ -52,23 +52,28 @@ def extrair_texto_ocr_space(file_bytes, filename):
     return "Texto extraído com sucesso"
 
 # =================================================================================
-# --- ROTAS DA APLICAÇÃO ---
+# --- ROTAS DA APLICAÇÃO (ESTRUTURA REVERTIDA) ---
 # =================================================================================
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    """ Rota principal para a ferramenta de análise de documentos (usa index.html). """
+@app.route('/')
+def home():
+    """ Rota para a página inicial (landing page). """
+    return render_template('inicial.html')
+
+@app.route('/verificador', methods=['GET', 'POST'])
+def verificador_page():
+    """ Rota para a ferramenta de análise de documentos. """
     if request.method == 'GET':
-        return render_template('index.html')
+        return render_template('verificação.html')
 
     # Lógica de POST (quando um arquivo é enviado para análise)
     if 'file' not in request.files or request.files['file'].filename == '':
-        return render_template('index.html', erro_upload="Nenhum arquivo selecionado.")
+        return render_template('verificação.html', erro_upload="Nenhum arquivo selecionado.")
 
     file = request.files['file']
     
     if not allowed_file(file.filename):
-        return render_template('index.html', erro_upload="Formato de arquivo não suportado.")
+        return render_template('verificação.html', erro_upload="Formato de arquivo não suportado.")
 
     filename = secure_filename(file.filename)
     file_bytes = file.read()
@@ -81,7 +86,7 @@ def index():
         
         if len(data[1]) > 0:
             print("Documento já processado. Retornando do cache.")
-            return render_template('index.html', resultado=data[1][0])
+            return render_template('verificação.html', resultado=data[1][0])
 
         print("Arquivo novo, iniciando processamento completo.")
         
@@ -105,15 +110,10 @@ def index():
         supabase.table('analises').insert(resultado_final).execute()
         print("Nova análise salva no Supabase.")
         
-        return render_template('index.html', resultado=resultado_final)
+        return render_template('verificação.html', resultado=resultado_final)
 
     except Exception as e:
-        return render_template('index.html', resultado={"status": "ERRO", "erros": [f"Erro inesperado: {e}"]})
-
-@app.route('/sobre')
-def sobre_page():
-    """ Rota para a sua página de apresentação (antiga tela inicial). """
-    return render_template('inicial.html')
+        return render_template('verificação.html', resultado={"status": "ERRO", "erros": [f"Erro inesperado: {e}"]})
 
 @app.route('/login')
 def login_page():
