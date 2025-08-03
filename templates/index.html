@@ -1,77 +1,160 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Extrator de Texto</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 p-6">
-    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow">
-        <h1 class="text-xl font-bold mb-4">Extrair e Salvar Texto</h1>
-        
-        <form id="uploadForm" class="mb-6">
-            <input 
-                type="file" 
-                name="file" 
-                accept="application/pdf,image/*" 
-                class="mb-3 block w-full border p-2 rounded" 
-                required
-            >
-            <button 
-                type="submit" 
-                class="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700"
-            >
-                Processar Documento
-            </button>
-        </form>
+from flask import Flask, request, jsonify, render_template
+import hashlib
+import requests
+import os
+import sqlite3
+import re
+from datetime import datetime
 
-        <div id="resultado" class="hidden p-4 bg-gray-50 rounded border">
-            <h2 class="font-bold mb-2">✅ Texto Salvo com Sucesso!</h2>
-            <pre id="texto" class="whitespace-pre-wrap bg-white p-2 rounded"></pre>
-            <div class="mt-3 text-sm">
-                <p><strong>ID do Documento:</strong></p>
-                <code id="hash" class="block mt-1 p-2 bg-gray-200 rounded"></code>
-                <button 
-                    onclick="copiarHash()" 
-                    class="mt-2 text-blue-600 text-xs"
-                >
-                    Copiar ID
-                </button>
-            </div>
-        </div>
-    </div>
+app = Flask(__name__)
 
-    <script>
-        async function copiarHash() {
-            const hash = document.getElementById('hash').textContent;
-            await navigator.clipboard.writeText(hash);
-            alert("ID copiado!");
-        }
+# Configurações
+DATABASE = 'documentos.db'
+app.config['UPLOAD_FOLDER'] = 'temp_uploads'
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData();
-            formData.append('file', e.target.file.files[0]);
+# Banco de dados
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS documentos (
+            id TEXT PRIMARY KEY,
+            texto TEXT NOT NULL,
+            status TEXT NOT NULL,
+            erros TEXT,
+            data_criacao TIMESTAMP
+        )
+    ''')
+    return conn
 
-            try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
+# Funções de Análise de Texto
+def validar_cpf(texto):
+    cpfs = re.findall(r'\d{3}\.?\d{3}\.?\d{3}-?\d{2}', texto)
+    return len(cpfs) > 0
 
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('texto').textContent = data.texto;
-                    document.getElementById('hash').textContent = data.hash_id;
-                    document.getElementById('resultado').classList.remove('hidden');
-                } else {
-                    const erro = await response.json();
-                    alert(`Erro: ${erro.erro || 'Falha no servidor'}`);
-                }
-            } catch (erro) {
-                alert("Erro na conexão!");
-            }
-        });
-    </script>
-</body>
-</html>
+def validar_cnpj(texto):
+    cnpjs = re.findall(r'\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}', texto)
+    return len(cnpjs) > 0
+
+def detectar_dados_sensiveis(texto):
+    erros = []
+    # Verifica CPF sem formatação
+    if re.search(r'\b\d{11}\b', texto):
+        erros.append("Possível CPF não formatado")
+    # Verifica números de cartão de crédito
+    if re.search(r'\b\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4}\b', texto):
+        erros.append("Possível número de cartão de crédito")
+    return erros if erros else None
+
+def analisar_texto(texto):
+    erros = []
+    status = "válido"
+    
+    # Validações básicas
+    if len(texto) < 50:
+        erros.append("Texto muito curto (mínimo 50 caracteres)")
+        status = "inválido"
+    
+    # Verifica dados sensíveis
+    if sensiveis := detectar_dados_sensiveis(texto):
+        erros.extend(sensiveis)
+        status = "inválido"
+    
+    # Verifica documentos válidos
+    tem_cpf = validar_cpf(texto)
+    tem_cnpj = validar_cnpj(texto)
+    
+    if not tem_cpf and not tem_cnpj:
+        erros.append("Nenhum CPF/CNPJ válido detectado")
+        status = "suspeito"
+    
+    return {
+        "status": status,
+        "erros": erros,
+        "tem_cpf": tem_cpf,
+        "tem_cnpj": tem_cnpj
+    }
+
+# OCR
+def extrair_texto_ocr(file_path):
+    try:
+        response = requests.post(
+            'https://api.ocr.space/parse/image',
+            files={'file': open(file_path, 'rb')},
+            data={'apikey': os.getenv('OCR_SPACE_API_KEY'), 'language': 'por'}
+        )
+        resultado = response.json()
+        if not resultado.get('IsErroredOnProcessing', True):
+            return resultado['ParsedResults'][0]['ParsedText'].strip()
+        return None
+    except Exception as e:
+        print(f"Erro no OCR: {e}")
+        return None
+
+# Rotas
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({"erro": "Nenhum arquivo enviado"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"erro": "Nome de arquivo inválido"}), 400
+
+    # Processar arquivo
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(file_path)
+    
+    texto = extrair_texto_ocr(file_path)
+    os.remove(file_path)
+    
+    if not texto:
+        return jsonify({"erro": "Falha ao extrair texto"}), 500
+
+    # Analisar texto
+    analise = analisar_texto(texto)
+    hash_id = hashlib.sha256(texto.encode()).hexdigest()
+
+    # Salvar no banco
+    conn = get_db()
+    conn.execute(
+        '''INSERT INTO documentos 
+        (id, texto, status, erros, data_criacao) 
+        VALUES (?, ?, ?, ?, ?)''',
+        (hash_id, texto, analise['status'], 
+         str(analise['erros']), datetime.now())
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "hash_id": hash_id,
+        "texto": texto,
+        "analise": analise
+    })
+
+@app.route('/documento/<hash_id>')
+def get_documento(hash_id):
+    conn = get_db()
+    doc = conn.execute(
+        '''SELECT texto, status, erros 
+        FROM documentos WHERE id = ?''', 
+        (hash_id,)
+    ).fetchone()
+    conn.close()
+
+    if doc:
+        return jsonify({
+            "texto": doc[0],
+            "status": doc[1],
+            "erros": eval(doc[2]) if doc[2] else []
+        })
+    return jsonify({"erro": "Documento não encontrado"}), 404
+
+if __name__ == '__main__':
+    app.run(debug=True)
