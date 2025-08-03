@@ -2,12 +2,24 @@ from flask import Flask, request, jsonify, render_template
 import hashlib
 import requests
 import os
+import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
 
-# Dicionário para armazenar os textos (em memória)
-documentos = {}
+# Configuração do SQLite (banco de dados simples)
+DATABASE = 'documentos.db'
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS documentos (
+            id TEXT PRIMARY KEY,
+            texto TEXT NOT NULL,
+            data_criacao TIMESTAMP
+        )
+    ''')
+    return conn
 
 def extrair_texto_ocr(file_path):
     try:
@@ -50,7 +62,15 @@ def upload_file():
 
     # Gerar hash como ID
     hash_id = hashlib.sha256(texto.encode()).hexdigest()
-    documentos[hash_id] = texto
+
+    # Salvar no banco de dados
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO documentos (id, texto, data_criacao) VALUES (?, ?, ?)",
+        (hash_id, texto, datetime.now())
+    )
+    conn.commit()
+    conn.close()
 
     return jsonify({
         "hash_id": hash_id,
@@ -59,9 +79,15 @@ def upload_file():
 
 @app.route('/documento/<hash_id>')
 def get_documento(hash_id):
-    texto = documentos.get(hash_id)
-    if texto:
-        return jsonify({"texto": texto})
+    conn = get_db()
+    documento = conn.execute(
+        "SELECT texto FROM documentos WHERE id = ?", 
+        (hash_id,)
+    ).fetchone()
+    conn.close()
+
+    if documento:
+        return jsonify({"texto": documento[0]})
     return jsonify({"erro": "Documento não encontrado"}), 404
 
 if __name__ == '__main__':
