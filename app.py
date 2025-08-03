@@ -1,30 +1,93 @@
+from flask import Flask, request, jsonify, render_template
+import hashlib
 import requests
 import os
+import json
 from datetime import datetime
-import psycopg2
+# import psycopg2 # <-- REMOVIDO: Importação do psycopg2
 from werkzeug.utils import secure_filename
-from psycopg2 import OperationalError
+from dotenv import load_dotenv
+import re
 
-app = Flask(__name__)
+# Carrega as variáveis de ambiente do arquivo .env
+load_dotenv()
 
-# Configurações
-app.config['UPLOAD_FOLDER'] = 'uploads'
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# --- Configurações ---
+OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')
+UPLOAD_FOLDER = 'uploads'
+BUCKET_NAME = 'armazenamento' # Presumi este nome, ajuste se necessário
+DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
 
-# Supabase
+# Supabase (apenas para Storage, as chaves de DB serão ignoradas se não usadas)
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-BUCKET_NAME = 'armazenamento'
 
-# Conexão PostgreSQL (via Supabase)
-DB_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT', '5432')}/{os.getenv('DB_NAME')}"
+# PostgreSQL (Variáveis de ambiente mantidas, mas não serão usadas no código)
+# DB_NAME = os.getenv("DB_NAME")
+# DB_USER = os.getenv("DB_USER")
+# DB_PASSWORD = os.getenv("DB_PASSWORD")
+# DB_HOST = os.getenv("DB_HOST")
+# DB_PORT = os.getenv("DB_PORT", 5432)
 
-def get_db_connection():
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# =================================================================================
+# --- NOSSAS FUNÇÕES DE ANÁLISE E NOTIFICAÇÃO ---
+# =================================================================================
+
+def analisar_texto_completo(texto):
+    """Executa todas as nossas regras de verificação no texto extraído."""
+    erros_detectados = []
+    texto_em_minusculo = texto.lower()
+
+    PALAVRAS_SUSPEITAS = ["dispensa de licitacao", "carater de urgencia", "pagamento retroativo", "inexigibilidade de licitacao"]
+    for palavra in PALAVRAS_SUSPEITAS:
+        if palavra in texto_em_minusculo:
+            erros_detectados.append(f"Alerta de Termo Sensível: A expressão '{palavra}' foi encontrada.")
+    
+    datas = re.findall(r"\d{2}/\d{2}/\d{4}", texto)
+    for data in datas:
+        try:
+            dia, mes, _ = map(int, data.split('/'))
+            if mes > 12 or dia > 31 or mes == 0 or dia == 0:
+                erros_detectados.append(f"Possível adulteração: A data '{data}' é inválida.")
+        except ValueError:
+            continue
+
+    status = "SUSPEITO" if erros_detectados else "SEGURO"
+    return {"status": status, "erros": erros_detectados}
+
+def enviar_alerta_discord(resultado_analise, nome_arquivo):
+    """Envia uma notificação formatada para o Discord via Webhook."""
+    if not DISCORD_WEBHOOK_URL:
+        print("URL do Webhook do Discord não configurada.")
+        return
+
+    embed = {
+        "title": f"🚨 Alerta: Documento Suspeito Detectado!",
+        "color": 15158332, # Vermelho
+        "fields": [
+            {"name": "Nome do Arquivo", "value": nome_arquivo, "inline": True},
+            {"name": "Status da Análise", "value": resultado_analise['status'], "inline": True},
+            {"name": "Hash do Conteúdo (SHA-256)", "value": f"`{resultado_analise['hash']}`"},
+            {"name": "Inconsistências Encontradas", "value": "\n".join([f"• {erro}" for erro in resultado_analise['erros']]) or "Nenhuma inconsistência específica listada."}
+        ],
+        "footer": {"text": "Análise concluída pelo Verificador Inteligente."}
+    }
+    data = {"content": "Um novo documento suspeito requer atenção imediata!", "embeds": [embed]}
+    
     try:
-        return psycopg2.connect(DB_URL)
-    except OperationalError as e:
-        print(f"Erro ao conectar ao banco de dados: {e}")
-        raise
+        response = requests.post(DISCORD_WEBHOOK_URL, data=json.dumps(data), headers={"Content-Type": "application/json"})
+        response.raise_for_status()
+        print("Notificação enviada ao Discord com sucesso.")
+    except Exception as e:
+        print(f"Erro ao enviar notificação para o Discord: {e}")
+
+# =================================================================================
+# --- SUAS FUNÇÕES ORIGINAIS DE INFRAESTRUTURA (sem DB) ---
+# =================================================================================
 
 def calcular_hash_sha256(file_path):
     sha256 = hashlib.sha256()
@@ -37,119 +100,99 @@ def salvar_no_storage(nome_arquivo, file_path):
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/octet-stream"
     }
     with open(file_path, 'rb') as file_data:
         response = requests.post(
             f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{nome_arquivo}",
             headers=headers,
-            files={"file": (nome_arquivo, file_data)}
+            data=file_data
         )
-    if response.status_code not in [200, 201]:
+    if response.status_code != 200:
         raise Exception(f"Erro ao salvar no Supabase Storage: {response.text}")
     return f"{BUCKET_NAME}/{nome_arquivo}"
-# Dicionário para armazenar os textos (em memória)
-documentos = {}
 
 def extrair_texto_ocr(file_path):
-try:
-@@ -59,27 +18,11 @@ def extrair_texto_ocr(file_path):
-)
-resultado = response.json()
-if not resultado.get('IsErroredOnProcessing', True):
-            return resultado['ParsedResults'][0]['ParsedText'].strip(), None
-        return "", resultado.get("ErrorMessage", "Erro desconhecido no OCR")
-    except Exception as e:
-        return "", str(e)
+    url = 'https://api.ocr.space/parse/image'
+    with open(file_path, 'rb') as f:
+        response = requests.post(
+            url,
+            files={'file': f},
+            data={'apikey': OCR_SPACE_API_KEY, 'language': 'por'}
+        )
+    resultado = response.json()
+    if not resultado.get('IsErroredOnProcessing'):
+        return resultado['ParsedResults'][0]['ParsedText'].strip(), None
+    else:
+        return "", resultado.get("ErrorMessage")
 
-def inserir_documento(hash_sha256, nome_arquivo, caminho_storage):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO documentos_oficiais (nome_arquivo, caminho_storage, hash_sha256, created_at)
-            VALUES (%s, %s, %s, %s)
-        """, (nome_arquivo, caminho_storage, hash_sha256, datetime.now()))
-        conn.commit()
-        return True
-            return resultado['ParsedResults'][0]['ParsedText'].strip()
-        return None
-except Exception as e:
-        print(f"Erro ao inserir documento: {e}")
-        return False
-    finally:
-        cursor.close()
-        conn.close()
-        print(f"Erro no OCR: {e}")
-        return None
+# REMOVIDO: get_db_connection
+# REMOVIDO: inserir_documento_e_analise
+
+# =================================================================================
+# --- ROTAS DA APLICAÇÃO ---
+# =================================================================================
 
 @app.route('/')
 def index():
-@@ -88,44 +31,38 @@ def index():
+    return render_template('index.html')
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
-if 'file' not in request.files:
-        return render_template('index.html', erro="Nenhum arquivo enviado")
-        return jsonify({"erro": "Nenhum arquivo enviado"}), 400
+    if 'file' not in request.files:
+        return jsonify({'erro': 'Nenhum arquivo enviado'}), 400
 
-file = request.files['file']
-if file.filename == '':
-        return render_template('index.html', erro="Nome de arquivo inválido")
-        return jsonify({"erro": "Nome de arquivo inválido"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'erro': 'Nome de arquivo inválido'}), 400
+
+    filename = secure_filename(file.filename)
+    local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(local_path)
 
     try:
-        # Salvar arquivo localmente
-        filename = secure_filename(file.filename)
-        local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(local_path)
+        # 1. Calcula o hash do ARQUIVO para propósitos de retorno e nome do storage
+        hash_arquivo = calcular_hash_sha256(local_path)
 
-        # Calcular hash e salvar no Supabase
-        hash_sha256 = calcular_hash_sha256(local_path)
-        filename_com_hash = f"{hash_sha256}_{filename}"
+        # 2. Salva o arquivo no Storage (Supabase)
+        filename_com_hash = f"{hash_arquivo}_{filename}"
         caminho_storage = salvar_no_storage(filename_com_hash, local_path)
-        inserir_documento(hash_sha256, filename, caminho_storage)
-    # Salvar temporariamente
-    file_path = f"temp_{file.filename}"
-    file.save(file_path)
 
-        # Extrair texto com OCR
+        # 3. Extrai o texto com OCR
         texto_extraido, erro_ocr = extrair_texto_ocr(local_path)
-    # Extrair texto
-    texto = extrair_texto_ocr(file_path)
-    os.remove(file_path)  # Limpar arquivo temporário
+        if erro_ocr:
+            raise Exception(f"Erro no OCR: {erro_ocr}")
 
-        # Montar resultado
-        resultado = {
-            "status": "sucesso" if not erro_ocr else "falha",
-            "hash": hash_sha256,
-            "texto_extraido": texto_extraido,
-            "erro_ocr": erro_ocr
+        # 4. Executa nossa análise completa no conteúdo
+        analise = analisar_texto_completo(texto_extraido)
+        
+        # 5. Prepara o resultado final para o usuário
+        # O hash_conteudo é do texto, não do arquivo, se for preciso
+        hash_conteudo = hashlib.sha256(texto_extraido.encode('utf-8')).hexdigest()
+        resultado_final = {
+            "status": analise['status'],
+            "erros": analise['erros'],
+            "hash_arquivo": hash_arquivo, # Retornando o hash do arquivo original
+            "hash_conteudo_ocr": hash_conteudo, # Retornando o hash do conteúdo extraído
+            "nome_arquivo": filename,
+            "caminho_storage": caminho_storage, # Opcional: retornar o caminho no storage
+            "texto_extraido": texto_extraido
         }
-    if not texto:
-        return jsonify({"erro": "Falha ao extrair texto"}), 500
 
-        return render_template('index.html', resultado=resultado)
-    # Gerar hash como ID
-    hash_id = hashlib.sha256(texto.encode()).hexdigest()
-    documentos[hash_id] = texto
+        # 6. Se for suspeito, envia a notificação para o Discord
+        if resultado_final['status'] == 'SUSPEITO':
+            enviar_alerta_discord(resultado_final, filename)
+        
+        return jsonify(resultado_final)
 
     except Exception as e:
-        return render_template('index.html', erro=str(e))
-    return jsonify({
-        "hash_id": hash_id,
-        "texto": texto
-    })
-
+        print(f"Erro durante o upload/processamento: {e}", flush=True) 
+        return jsonify({"erro": str(e)}), 500
     finally:
-        # Limpar arquivo temporário
-        if 'local_path' in locals() and os.path.exists(local_path):
+        if os.path.exists(local_path):
             os.remove(local_path)
-@app.route('/documento/<hash_id>')
-def get_documento(hash_id):
-    texto = documentos.get(hash_id)
-    if texto:
-        return jsonify({"texto": texto})
-    return jsonify({"erro": "Documento não encontrado"}), 404
 
+# Para uso em desenvolvimento local:
 if __name__ == '__main__':
-    app.run(debug=os.getenv('FLASK_DEBUG', 'False') == 'True')
-    app.run(debug=True)
+    # Você pode definir a porta aqui se precisar
+    app.run(debug=True, port=5000)
