@@ -1,52 +1,100 @@
-<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Upload de Documento Oficial</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+    <title>Verificador de Documentos</title>
+    <title>Extrator de Texto</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-8">
-    <div class="max-w-3xl mx-auto bg-white shadow-md rounded p-6">
-        <h1 class="text-2xl font-bold mb-4 text-center">Upload de Documento Oficial</h1>
-        
-        <form id="uploadForm" enctype="multipart/form-data" class="space-y-4">
-            <input type="file" name="file" id="file" accept=".pdf" class="block w-full text-sm text-gray-700">
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                Enviar
-            </button>
-        </form>
+<body class="bg-gray-100 font-sans p-6">
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl space-y-6">
+        <h1 class="text-2xl font-bold text-center text-blue-700">Verificador de Documentos Oficiais</h1>
 
-        <div id="resultado" class="mt-6 hidden bg-gray-50 p-4 rounded border border-gray-300">
-            <h2 class="text-lg font-semibold mb-2">Resultado:</h2>
-            <pre id="jsonOutput" class="text-sm text-gray-800 whitespace-pre-wrap"></pre>
+        <!-- Formulário de upload -->
+        <form 
+            action="/upload" 
+            method="POST" 
+            enctype="multipart/form-data" 
+            class="space-y-4"
+        >
+            <label class="block text-sm font-medium text-gray-700">
+                Upload do Documento (PDF ou imagem):
+            </label>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow">
+        <h1 class="text-xl font-bold mb-4">Extrair Texto de Documentos</h1>
+        
+        <form id="uploadForm" class="mb-6">
+<input 
+type="file" 
+name="file" 
+accept="application/pdf,image/*" 
+                class="border rounded p-2 w-full"
+                class="mb-3 block w-full" 
+required
+>
+
+<button 
+type="submit" 
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded w-full"
+                class="bg-blue-600 text-white px-4 py-2 rounded w-full"
+>
+                Cadastrar e Analisar Documento
+                Extrair Texto
+</button>
+
+            {% if erro %}
+                <p class="text-red-600 font-medium mt-2">{{ erro }}</p>
+            {% endif %}
+</form>
+
+        <!-- Resultado da Análise -->
+        {% if resultado %}
+            <div class="mt-6 p-4 border rounded bg-gray-50">
+                <h2 class="text-lg font-bold text-blue-700 mb-2">Resultado da Análise</h2>
+                <p><strong>Status:</strong> {{ resultado.status }}</p>
+                <p><strong>Hash:</strong> <code class="text-sm">{{ resultado.hash }}</code></p>
+                
+                {% if resultado.erro_ocr %}
+                    <p class="mt-2 text-red-600">
+                        <strong>Erro no OCR:</strong> {{ resultado.erro_ocr }}
+                    </p>
+                {% endif %}
+
+                <details class="mt-4">
+                    <summary class="cursor-pointer text-sm text-blue-600">
+                        Ver texto extraído
+                    </summary>
+                    <pre class="bg-white p-2 border rounded text-sm mt-2 whitespace-pre-wrap">{{ resultado.texto_extraido }}</pre>
+                </details>
+            </div>
+        {% endif %}
+        <div id="resultado" class="hidden p-4 bg-gray-50 rounded">
+            <h2 class="font-bold mb-2">Texto Extraído:</h2>
+            <pre id="texto" class="whitespace-pre-wrap"></pre>
+            <p class="mt-3 text-sm">
+                <strong>Hash ID:</strong> <span id="hash" class="font-mono"></span>
+            </p>
         </div>
-    </div>
+</div>
 
     <script>
-        const form = document.getElementById('uploadForm');
-        const resultado = document.getElementById('resultado');
-        const jsonOutput = document.getElementById('jsonOutput');
-
-        form.addEventListener('submit', async (e) => {
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-
-            const fileInput = document.getElementById('file');
             const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
+            formData.append('file', e.target.file.files[0]);
 
-            try {
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
 
+            if (response.ok) {
                 const data = await response.json();
-                resultado.classList.remove('hidden');
-                jsonOutput.textContent = JSON.stringify(data, null, 2);
-            } catch (err) {
-                resultado.classList.remove('hidden');
-                jsonOutput.textContent = 'Erro ao enviar: ' + err.message;
+                document.getElementById('texto').textContent = data.texto;
+                document.getElementById('hash').textContent = data.hash_id;
+                document.getElementById('resultado').classList.remove('hidden');
+            } else {
+                alert("Erro ao processar arquivo!");
             }
         });
     </script>
