@@ -21,66 +21,46 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = Flask(__name__)
 
 # =================================================================================
-# --- FUNÇÕES DE LÓGICA (Análise, OCR, etc.) ---
-# =================================================================================
-
-def analisar_texto_completo(texto):
-    # (Sua lógica de análise permanece aqui)
-    erros_detectados = []
-    status = "SUSPEITO" if erros_detectados else "SEGURO"
-    return {"status": status, "erros": erros_detectados}
-
-def extrair_texto_ocr_space(file_bytes, filename):
-    # (Sua lógica de extração de texto via API permanece aqui)
-    return "Texto extraído com sucesso"
-
-# =================================================================================
 # --- ROTAS PARA SERVIR AS PÁGINAS HTML ---
 # =================================================================================
 
 @app.route('/')
 def home():
     """ Rota para a página inicial (landing page). """
+    # CORREÇÃO: Usando o nome exato do seu arquivo
     return render_template('Tela_Inicial') 
 
 @app.route('/login')
 def login_page():
     """ Rota para exibir a página de login. """
+    # CORREÇÃO: Usando o nome exato do seu arquivo
     return render_template('Login')
 
 @app.route('/verificador', methods=['GET', 'POST'])
 def verificador_page():
     """ Rota para a ferramenta de análise de documentos. """
-    # (A lógica completa do seu analisador fica aqui)
+    # CORREÇÃO: Usando o nome exato do seu arquivo
     if request.method == 'GET':
         return render_template('Tela_Verificacao')
-    # ... resto da lógica de POST
+    # ... Lógica de POST ...
     return render_template('Tela_Verificacao')
-
-@app.route('/faq')
-def faq_page():
-    return render_template('Perguntas_Frequentes')
-
-# --- NOVA ROTA ADICIONADA ---
+    
 @app.route('/transparencia')
 def transparencia_page():
     """ Rota para o Portal de Transparência. """
+    # CORREÇÃO: Usando o nome exato do seu arquivo
     return render_template('Portal_Transparencia')
-# -----------------------------
+
+@app.route('/faq')
+def faq_page():
+    """ Rota para a página de Perguntas Frequentes. """
+    # CORREÇÃO: Usando o nome exato do seu arquivo
+    return render_template('Perguntas_Frequentes')
 
 # =================================================================================
-# --- ROTAS DE API PARA LOGIN/CADASTRO ---
+# --- ROTAS DE API (LÓGICA) ---
+# (As lógicas de cadastro, login e análise devem ser adicionadas aqui)
 # =================================================================================
-
-@app.route('/signup', methods=['POST'])
-def signup():
-    # ... (Sua rota de cadastro de usuário) ...
-    pass
-
-@app.route('/handle_login', methods=['POST'])
-def handle_login_post():
-    # ... (Sua rota que processa o envio do formulário de login) ...
-    pass
 
 # --- Início do Servidor ---
 if __name__ == '__main__':
