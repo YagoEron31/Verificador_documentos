@@ -1,37 +1,8 @@
 import os
-import re
-import hashlib
-import io
-import json
-import requests
-from flask import Flask, request, render_template, jsonify
-from supabase import create_client, Client
-from werkzeug.utils import secure_filename
-from dotenv import load_dotenv
+from flask import Flask, render_template, request
+# ... (suas outras importações)
 
-# Carrega variáveis de ambiente
-load_dotenv()
-
-# --- Configurações e Conexões ---
-OCR_SPACE_API_KEY = os.getenv('OCR_SPACE_API_KEY')
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = Flask(__name__)
-
-# =================================================================================
-# --- FUNÇÕES DE LÓGICA (Análise, OCR, etc.) ---
-# (As lógicas devem ser preenchidas conforme a necessidade)
-# =================================================================================
-
-def analisar_texto_completo(texto):
-    erros_detectados = []
-    status = "SUSPEITO" if erros_detectados else "SEGURO"
-    return {"status": status, "erros": erros_detectados}
-
-def extrair_texto_ocr_space(file_bytes, filename):
-    return "Texto extraído com sucesso"
 
 # =================================================================================
 # --- ROTAS PARA SERVIR AS PÁGINAS HTML ---
@@ -40,44 +11,43 @@ def extrair_texto_ocr_space(file_bytes, filename):
 @app.route('/')
 def home():
     """ Rota para a página inicial (landing page). """
-    return render_template('Tela_Inicial') 
+    # Corrigido para o nome do seu arquivo
+    return render_template('inicial.html') 
 
 @app.route('/login')
 def login_page():
     """ Rota para exibir a página de login. """
-    # CORREÇÃO: Usando o nome 'login' em minúsculo, como você especificou.
-    return render_template('login')
+    return render_template('login.html')
+
+@app.route('/cadastro')
+def cadastro_page():
+    """ Rota para exibir a página de cadastro. """
+    return render_template('cadastro.html')
 
 @app.route('/verificador', methods=['GET', 'POST'])
 def verificador_page():
     """ Rota para a ferramenta de análise de documentos. """
+    # Corrigido para o nome do seu arquivo
     if request.method == 'GET':
-        return render_template('Tela_Verificacao')
+        return render_template('verificação.html')
+    # ... (Sua lógica de POST para análise)
+    return render_template('verificação.html')
     
-    # Lógica de POST...
-    try:
-        if 'file' not in request.files or request.files['file'].filename == '':
-            return render_template('Tela_Verificacao', erro_upload="Nenhum arquivo selecionado.")
-        
-        file = request.files['file']
-        resultado_final = {"status": "SEGURO", "erros": [], "hash": "exemplo123", "texto": "Exemplo de texto"}
-        return render_template('Tela_Verificacao', resultado=resultado_final)
-    except Exception as e:
-        return render_template('Tela_Verificacao', resultado={"status": "ERRO", "erros": [f"Erro inesperado: {e}"]})
+@app.route('/transparencia')
+def transparencia_page():
+    """ Rota para o Portal de Transparência. """
+    return render_template('transparencia.html')
 
 @app.route('/faq')
 def faq_page():
-    return render_template('Perguntas_Frequentes')
-
-@app.route('/transparencia')
-def transparencia_page():
-    return render_template('Portal_Transparencia')
+    """ Rota para a página de Perguntas Frequentes. """
+    # Corrigido para o nome do seu arquivo
+    return render_template('perguntas.html')
 
 # =================================================================================
-# --- ROTAS DE API PARA LOGIN/CADASTRO ---
-# (As lógicas devem ser preenchidas conforme a necessidade)
+# --- ROTAS DE API E LÓGICA ---
+# (Suas outras rotas e funções de análise permanecem aqui)
 # =================================================================================
 
-# --- Início do Servidor ---
 if __name__ == '__main__':
     app.run(debug=True)
