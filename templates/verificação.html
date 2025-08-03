@@ -2,13 +2,13 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verificador de Documentos - Prefeitura de Apodi/RN</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #1E8A57; /* Verde da Prefeitura de Apodi */
+            --primary: #1E8A57;
             --secondary: #0F4A2D;
         }
         body { font-family: 'Inter', system-ui, sans-serif; }
@@ -68,7 +68,7 @@
             {% if resultado %}
             <div class="mt-8 border-t border-gray-200 pt-6">
                 <h2 class="text-2xl font-semibold mb-4">Resultado da Análise</h2>
-                
+
                 <div class="p-4 rounded-lg border-l-4 mb-6 {% if resultado.status == 'SEGURO' %}status-seguro{% elif resultado.status == 'SUSPEITO' %}status-suspeito{% else %}status-erro{% endif %}">
                     <h3 class="font-bold text-lg">
                         {% if resultado.status == 'SEGURO' %}<i class="fas fa-check-circle mr-2"></i>Status: Documento Seguro
@@ -84,18 +84,24 @@
                     </ul>
                     {% endif %}
                 </div>
-                
-                {% if resultado.hash %}
-                <div class="mb-6 text-sm">
-                    <strong>Hash do Conteúdo (SHA-256):</strong>
-                    <p class="font-mono bg-gray-100 p-2 rounded break-all text-xs mt-1">{{ resultado.hash }}</p>
+
+                {% if nome_arquivo %}
+                <div class="mb-4 text-sm">
+                    <strong>Nome do Arquivo:</strong> {{ nome_arquivo }}
                 </div>
                 {% endif %}
-                
-                {% if resultado.texto %}
+
+                {% if hash_arquivo %}
+                <div class="mb-6 text-sm">
+                    <strong>Hash do Arquivo (SHA-256):</strong>
+                    <p class="font-mono bg-gray-100 p-2 rounded break-all text-xs mt-1">{{ hash_arquivo }}</p>
+                </div>
+                {% endif %}
+
+                {% if texto_extraido %}
                 <div>
                     <h3 class="font-semibold mb-2">Texto Extraído:</h3>
-                    <pre class="w-full h-48 p-2 border rounded bg-gray-50 text-xs overflow-auto" style="white-space: pre-wrap;">{{ resultado.texto }}</pre>
+                    <pre class="w-full h-48 p-2 border rounded bg-gray-50 text-xs overflow-auto" style="white-space: pre-wrap;">{{ texto_extraido }}</pre>
                 </div>
                 {% endif %}
             </div>
@@ -104,7 +110,6 @@
     </main>
 
     <script>
-        // Script para mostrar o nome do arquivo e o botão de enviar
         const fileInput = document.getElementById('file-upload');
         const submitBtn = document.getElementById('submit-btn');
         const uploadPrompt = document.getElementById('upload-prompt');
